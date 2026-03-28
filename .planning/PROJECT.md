@@ -1,4 +1,4 @@
-# PoliPunch: Presidential Fighting Game
+# Heart of Steel (H.O.S)
 
 ## What This Is
 

@@ -1,4 +1,4 @@
-# Requirements: PoliPunch — Presidential Fighting Game
+# Requirements: Heart of Steel (H.O.S)
 
 **Defined:** 2026-03-28
 **Core Value:** A fully playable, fun fighting game that runs from a single HTML file — controls must feel responsive, characters must feel distinct, and every fight must have personality.
@@ -103,60 +103,58 @@
 
 ## Traceability
 
-*(Populated by roadmap agent)*
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENG-01 | — | Pending |
-| ENG-02 | — | Pending |
-| ENG-03 | — | Pending |
-| ENG-04 | — | Pending |
-| ENG-05 | — | Pending |
-| ENG-06 | — | Pending |
-| FTR-01 | — | Pending |
-| FTR-02 | — | Pending |
-| FTR-03 | — | Pending |
-| FTR-04 | — | Pending |
-| FTR-05 | — | Pending |
-| FTR-06 | — | Pending |
-| FTR-07 | — | Pending |
-| FTR-08 | — | Pending |
-| CMB-01 | — | Pending |
-| CMB-02 | — | Pending |
-| CMB-03 | — | Pending |
-| CMB-04 | — | Pending |
-| CMB-05 | — | Pending |
-| CMB-06 | — | Pending |
-| CMB-07 | — | Pending |
-| CMB-08 | — | Pending |
-| CMB-09 | — | Pending |
-| STG-01 | — | Pending |
-| STG-02 | — | Pending |
-| STG-03 | — | Pending |
-| STG-04 | — | Pending |
-| STG-05 | — | Pending |
-| STG-06 | — | Pending |
-| FLW-01 | — | Pending |
-| FLW-02 | — | Pending |
-| FLW-03 | — | Pending |
-| FLW-04 | — | Pending |
-| FLW-05 | — | Pending |
-| FLW-06 | — | Pending |
-| FLW-07 | — | Pending |
-| AI-01 | — | Pending |
-| AI-02 | — | Pending |
-| AI-03 | — | Pending |
-| AI-04 | — | Pending |
-| AI-05 | — | Pending |
-| AUD-01 | — | Pending |
-| AUD-02 | — | Pending |
-| AUD-03 | — | Pending |
+| ENG-01 | Phase 1 | Pending |
+| ENG-02 | Phase 1 | Pending |
+| ENG-03 | Phase 1 | Pending |
+| ENG-04 | Phase 1 | Pending |
+| ENG-05 | Phase 1 | Pending |
+| ENG-06 | Phase 1 | Pending |
+| FTR-01 | Phase 3 | Pending |
+| FTR-02 | Phase 1 | Pending |
+| FTR-03 | Phase 1 | Pending |
+| FTR-04 | Phase 1 | Pending |
+| FTR-05 | Phase 2 | Pending |
+| FTR-06 | Phase 3 | Pending |
+| FTR-07 | Phase 3 | Pending |
+| FTR-08 | Phase 3 | Pending |
+| CMB-01 | Phase 1 | Pending |
+| CMB-02 | Phase 1 | Pending |
+| CMB-03 | Phase 1 | Pending |
+| CMB-04 | Phase 4 | Pending |
+| CMB-05 | Phase 4 | Pending |
+| CMB-06 | Phase 1 | Pending |
+| CMB-07 | Phase 1 | Pending |
+| CMB-08 | Phase 4 | Pending |
+| CMB-09 | Phase 1 | Pending |
+| STG-01 | Phase 1 | Pending |
+| STG-02 | Phase 3 | Pending |
+| STG-03 | Phase 3 | Pending |
+| STG-04 | Phase 3 | Pending |
+| STG-05 | Phase 4 | Pending |
+| STG-06 | Phase 4 | Pending |
+| FLW-01 | Phase 1 | Pending |
+| FLW-02 | Phase 2 | Pending |
+| FLW-03 | Phase 2 | Pending |
+| FLW-04 | Phase 1 | Pending |
+| FLW-05 | Phase 2 | Pending |
+| FLW-06 | Phase 2 | Pending |
+| FLW-07 | Phase 2 | Pending |
+| AI-01 | Phase 2 | Pending |
+| AI-02 | Phase 2 | Pending |
+| AI-03 | Phase 2 | Pending |
+| AI-04 | Phase 2 | Pending |
+| AI-05 | Phase 2 | Pending |
+| AUD-01 | Phase 4 | Pending |
+| AUD-02 | Phase 4 | Pending |
+| AUD-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 44 total
-- Mapped to phases: 0
-- Unmapped: 44 ⚠️ (pending roadmap)
+- Mapped to phases: 44
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-28*
-*Last updated: 2026-03-28 after initial definition*
+*Last updated: 2026-03-28 after roadmap creation*

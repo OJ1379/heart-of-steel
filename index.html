@@ -316,7 +316,7 @@
     },
     update(input) {
       this._frameCount++;
-      if (input.enter) return 'fight';
+      if (input.enter) return 'charSelect';
       return null;
     },
     render(ctx) {
@@ -1726,6 +1726,12 @@
   let matchOver = false;
   let winner = null;
 
+  // Selection state (set by charSelectScene)
+  let selectedP1Def = null;
+  let selectedP2Def = null;
+  let selectedDifficulty = 1;  // 0=Easy, 1=Medium, 2=Hard
+  let selectedStage = 'white-house';
+
   function resetRound() {
     // Reset fighters to starting positions with full health
     player.health = player.def.stats.health;
@@ -1747,10 +1753,157 @@
     hitStopFramesRemaining = 0;
   }
 
+  // ===== CHARACTER SELECT SCENE =====
+  const charSelectScene = {
+    _cursorPos: 0,
+    _difficulty: 1,
+    _confirmed: false,
+    _frameCount: 0,
+    _availableFighters: [],
+    _inputCooldown: 0,
+    enter() {
+      this._cursorPos = 0;
+      this._difficulty = 1;
+      this._confirmed = false;
+      this._frameCount = 0;
+      this._inputCooldown = 0;
+      this._availableFighters = [TRUMP, BIDEN];
+      if (Object.keys(portraitCache).length === 0) {
+        initPortraitCache([TRUMP, BIDEN]);
+      }
+    },
+    update(input) {
+      this._frameCount++;
+      if (this._confirmed) return null;
+      if (this._inputCooldown > 0) this._inputCooldown--;
+
+      if (this._inputCooldown === 0) {
+        if (input.left && this._cursorPos > 0) {
+          this._cursorPos--;
+          this._inputCooldown = 12;
+        } else if (input.right && this._cursorPos < 1) {
+          this._cursorPos++;
+          this._inputCooldown = 12;
+        }
+        if (input.up && this._difficulty > 0) {
+          this._difficulty--;
+          this._inputCooldown = 12;
+        } else if (input.down && this._difficulty < 2) {
+          this._difficulty++;
+          this._inputCooldown = 12;
+        }
+      }
+
+      if (input.enter) {
+        selectedP1Def = this._availableFighters[this._cursorPos];
+        selectedP2Def = this._availableFighters.find(function(f) { return f !== selectedP1Def; });
+        selectedDifficulty = this._difficulty;
+        this._confirmed = true;
+        return 'stageSelect';
+      }
+
+      if (keys['Escape']) {
+        return 'title';
+      }
+
+      return null;
+    },
+    render(ctx) {
+      // Background
+      ctx.fillStyle = '#0A0A2A';
+      ctx.fillRect(0, 0, 400, 240);
+
+      // Heading
+      drawText(ctx, 'SELECT FIGHTER', 200, 16, '#FFFFFF', 12, 'center');
+
+      // Portrait cards
+      const cardPositions = [
+        { x: 72, y: 40, name: 'Trump', def: TRUMP, locked: false },
+        { x: 172, y: 40, name: 'Biden', def: BIDEN, locked: false },
+        { x: 272, y: 40, name: '???', def: null, locked: true }
+      ];
+
+      for (let i = 0; i < cardPositions.length; i++) {
+        const card = cardPositions[i];
+        const isSelected = (i === this._cursorPos);
+
+        // Selection glow
+        if (isSelected && !card.locked) {
+          ctx.fillStyle = 'rgba(255,204,0,0.3)';
+          ctx.fillRect(card.x - 4, card.y - 4, 48, 56);
+        }
+
+        // Card border
+        if (card.locked) {
+          ctx.fillStyle = '#333333';
+        } else if (isSelected) {
+          ctx.fillStyle = '#FFCC00';
+        } else {
+          ctx.fillStyle = '#444466';
+        }
+        ctx.fillRect(card.x - 2, card.y - 2, 44, 52);
+
+        // Card background
+        ctx.fillStyle = '#1A1A3A';
+        ctx.fillRect(card.x, card.y, 40, 48);
+
+        // Portrait or locked text
+        if (card.locked) {
+          drawText(ctx, '???', card.x + 20, card.y + 20, '#666666', 8, 'center');
+        } else if (portraitCache[card.name]) {
+          ctx.drawImage(portraitCache[card.name], card.x, card.y);
+        }
+
+        // Fighter name
+        const nameCenterX = card.x + 20;
+        drawText(ctx, card.name.toUpperCase(), nameCenterX, 96, '#FFFFFF', 8, 'center');
+      }
+
+      // P1 / CPU badges
+      const p1CardX = cardPositions[this._cursorPos].x + 20;
+      const cpuIdx = this._cursorPos === 0 ? 1 : 0;
+      const cpuCardX = cardPositions[cpuIdx].x + 20;
+      drawText(ctx, 'P1', p1CardX, 36, '#00CC00', 8, 'center');
+      drawText(ctx, 'CPU', cpuCardX, 36, '#CC0000', 8, 'center');
+
+      // Difficulty section
+      drawText(ctx, 'DIFFICULTY', 200, 128, '#FFFFFF', 8, 'center');
+
+      const diffLabels = ['EASY', 'MEDIUM', 'HARD'];
+      const diffXPositions = [136, 200, 264];
+      for (let d = 0; d < 3; d++) {
+        const color = (d === this._difficulty) ? '#FFCC00' : '#888888';
+        drawText(ctx, diffLabels[d], diffXPositions[d], 140, color, 8, 'center');
+      }
+      drawText(ctx, '<', 120, 140, '#FFFFFF', 8, 'center');
+      drawText(ctx, '>', 280, 140, '#FFFFFF', 8, 'center');
+
+      // Blinking prompt
+      const showPrompt = Math.floor(this._frameCount / 30) % 2 === 0;
+      if (showPrompt) {
+        drawText(ctx, 'PRESS ENTER TO FIGHT', 200, 220, '#FFFFFF', 8, 'center');
+      }
+    }
+  };
+
+  // ===== STAGE SELECT SCENE (pass-through, FLW-03 full UI deferred to Phase 3) =====
+  const stageSelectScene = {
+    enter() {
+      selectedStage = 'white-house';
+    },
+    update(input) {
+      return 'fight';
+    },
+    render(ctx) {
+      ctx.fillStyle = '#0A0A2A';
+      ctx.fillRect(0, 0, 400, 240);
+    }
+  };
+
   const fightScene = {
     enter() {
-      player = createFighter(TRUMP, 100, 1);
-      cpu = createFighter(BIDEN, 300, -1);
+      player = createFighter(selectedP1Def || TRUMP, 100, 1);
+      cpu = createFighter(selectedP2Def || BIDEN, 300, -1);
       roundTimer = 3600;
       p1Wins = 0;
       p2Wins = 0;
@@ -1764,7 +1917,7 @@
       attackHeldFrames = 0;
       prevAttack = false;
       inputBuffer.length = 0;
-      initSpriteCache([TRUMP, BIDEN]);
+      initSpriteCache([selectedP1Def || TRUMP, selectedP2Def || BIDEN]);
     },
     update(input) {
       // Match fully over: wait for Enter to go to victory scene
@@ -1788,7 +1941,7 @@
         // Check for match end (best-of-3: 2 wins)
         if (p1Wins >= 2 || p2Wins >= 2) {
           matchOver = true;
-          winner = p1Wins >= 2 ? 'TRUMP' : 'CPU';
+          winner = p1Wins >= 2 ? player.def.name.toUpperCase() : cpu.def.name.toUpperCase();
           koTriggered = false;
           return null;
         }
@@ -1888,9 +2041,13 @@
   const victoryScene = {
     _frameCount: 0,
     _winner: null,
+    _winnerDef: null,
+    _loserDef: null,
     enter() {
       this._frameCount = 0;
       this._winner = winner || 'TRUMP';
+      this._winnerDef = p1Wins >= 2 ? (selectedP1Def || TRUMP) : (selectedP2Def || BIDEN);
+      this._loserDef = p1Wins >= 2 ? (selectedP2Def || BIDEN) : (selectedP1Def || TRUMP);
     },
     update(input) {
       this._frameCount++;
@@ -1912,17 +2069,54 @@
       ctx.fillStyle = '#0A0A1A';
       ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-      drawText(ctx, (this._winner || 'TRUMP') + ' WINS!', 200, 100, '#FFCC00', 16, 'center');
+      // Winner sprite at 1.5x scale
+      const winnerName = this._winnerDef ? this._winnerDef.name : 'Trump';
+      const loserName = this._loserDef ? this._loserDef.name : 'Biden';
+      const winFrameIdx = Math.floor(this._frameCount / 15) % 4;
 
+      if (spriteCache[winnerName] && spriteCache[winnerName].idle) {
+        const winFrame = spriteCache[winnerName].idle[winFrameIdx];
+        if (winFrame) {
+          ctx.save();
+          // Position winner sprite: center at x=140, bottom at y=160, scaled 1.5x
+          const wx = 140 - Math.floor(winFrame.width * 1.5 / 2);
+          const wy = 160 - Math.floor(winFrame.height * 1.5);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(winFrame, wx, wy, Math.floor(winFrame.width * 1.5), Math.floor(winFrame.height * 1.5));
+          ctx.restore();
+        }
+      }
+
+      // Loser sprite at 1x, darkened (knockdown frame 3)
+      if (spriteCache[loserName] && spriteCache[loserName].knockdown) {
+        const loseFrame = spriteCache[loserName].knockdown[3];
+        if (loseFrame) {
+          const lx = 260 - Math.floor(loseFrame.width / 2);
+          const ly = 130 - Math.floor(loseFrame.height);
+          ctx.drawImage(loseFrame, lx, ly);
+          // Darken overlay
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(lx, ly, loseFrame.width, loseFrame.height);
+        }
+      }
+
+      // "WINNER!" text
+      drawText(ctx, 'WINNER!', 200, 150, '#FFCC00', 16, 'center');
+      // Winner name
+      drawText(ctx, this._winner, 200, 170, '#FFFFFF', 12, 'center');
+
+      // Blinking prompt after 60 frames
       const showPrompt = Math.floor(this._frameCount / 30) % 2 === 0;
       if (showPrompt && this._frameCount > 60) {
-        drawText(ctx, 'PRESS ENTER TO CONTINUE', 200, 190, '#FFFFFF', 8, 'center');
+        drawText(ctx, 'PRESS ENTER TO PLAY AGAIN', 200, 210, '#FFFFFF', 8, 'center');
       }
     }
   };
 
   const scenes = {
     title: titleScene,
+    charSelect: charSelectScene,
+    stageSelect: stageSelectScene,
     fight: fightScene,
     victory: victoryScene
   };

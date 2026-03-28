@@ -29,13 +29,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. User can perform fast attack combos (3-4 hit chains), charged power attacks, and blocking against a second placeholder fighter, with visible hit stop on impact
   4. Health bars, round timer, and HUD elements are visible and functional during the fight, styled like a 90s arcade cabinet
   5. The game runs at a locked 60fps with all pixel art rendered crisply via canvas (no blur, no external assets)
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md -- Engine foundation: HTML shell, canvas setup, game loop, input system, scene manager, sprite cache, White House stage
+- [ ] 01-02-PLAN.md -- Fighter system: Trump/CPU definitions, sprite art, state machine, movement, attacks, blocking, hit detection, hit stop, combos
+- [ ] 01-03-PLAN.md -- HUD and game flow: health bars, timer, round pips, KO splash, victory screen, complete game loop
 
 ### Phase 2: AI, Game Flow + Architecture Validation
 **Goal**: The game is playable solo end-to-end -- player picks a fighter, CPU opponent fights back intelligently, best-of-3 rounds determine a winner, and the second fighter (Biden) proves the data-driven architecture works
@@ -89,7 +89,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|

@@ -12,7 +12,25 @@ A fully playable, fun fighting game that runs from a single HTML file — contro
 
 ### Validated
 
-(None yet — ship to validate)
+**Engine & Core Combat** — Validated in Phase 01: engine-core-combat
+- [x] Single self-contained HTML5 file — all JS, CSS, canvas art inline, zero external dependencies
+- [x] 60fps game loop with responsive keyboard input (fixed timestep, requestAnimationFrame)
+- [x] Canvas-based renderer for all sprites, backgrounds, and UI
+- [x] Donald Trump fighter — brash brawler archetype with parametric sprite, fast/power attacks, hitboxes
+- [x] The White House stage (Oval Office) — fully procedural canvas art
+- [x] Fast Attack (tap): chainable combos | Power Attack (hold 12+ frames): heavy hit
+- [x] Block mechanic with damage reduction
+- [x] Best-of-3 round structure with K.O. splash
+- [x] Title screen, fight scene, victory screen
+
+**AI, Game Flow & Biden Fighter** — Validated in Phase 02: ai-game-flow-architecture-validation
+- [x] Joe Biden fighter — tanky grappler, silver hair/blue tie/sunglasses, health: 1200, reach: 1.3
+- [x] Character select screen — portrait cache system, P1/CPU badges, difficulty selector
+- [x] AI opponent — 4-state FSM (approach/pressure/back-off/punish), 3 difficulty tiers (Easy/Medium/Hard)
+- [x] AI generates synthetic input through same updateFighter pipeline as human player
+- [x] Round splash screens ("ROUND N" / "FIGHT!") blocking game updates during display
+- [x] Timer shows 60 when fighting begins (splash correctly freezes countdown)
+- [x] Scene flow Title→CharSelect→StageSelect→Fight→Victory→Title wired end-to-end
 
 ### Active
 
@@ -110,4 +128,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 after initialization*
+*Last updated: 2026-03-28 after Phase 02 completion — Biden fighter, AI opponent, round splashes all validated*

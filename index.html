@@ -1871,6 +1871,8 @@
   let matchOver = false;
   let winner = null;
   let aiController = null;
+  let roundSplashTimer = 0;    // Total frames remaining in splash (90 = start, 0 = fighting)
+  let roundSplashPhase = '';   // 'round' or 'fight'
 
   // Selection state (set by charSelectScene)
   let selectedP1Def = null;
@@ -1897,6 +1899,8 @@
     koSplashTimer = 0;
     roundWinner = null;
     hitStopFramesRemaining = 0;
+    roundSplashTimer = 0;
+    roundSplashPhase = '';
   }
 
   // ===== CHARACTER SELECT SCENE =====
@@ -2065,8 +2069,19 @@
       inputBuffer.length = 0;
       initSpriteCache([selectedP1Def || TRUMP, selectedP2Def || BIDEN]);
       aiController = createAIController(selectedDifficulty);
+      roundSplashTimer = 90;
+      roundSplashPhase = 'round';
     },
     update(input) {
+      // Round splash: block ALL input and game updates
+      if (roundSplashTimer > 0) {
+        roundSplashTimer--;
+        if (roundSplashTimer === 30) {
+          roundSplashPhase = 'fight';
+        }
+        return null;
+      }
+
       // Match fully over: wait for Enter to go to victory scene
       if (matchOver) {
         if (input.enter) return 'victory';
@@ -2095,6 +2110,8 @@
         // Start next round
         currentRound++;
         resetRound();
+        roundSplashTimer = 90;
+        roundSplashPhase = 'round';
         return null;
       }
 
@@ -2158,6 +2175,23 @@
       // HUD overlay
       if (player && cpu) {
         drawHUD(ctx, player, cpu, roundTimer, p1Wins, p2Wins);
+      }
+
+      // Round splash overlay
+      if (roundSplashTimer > 0) {
+        if (roundSplashPhase === 'round') {
+          // Semi-transparent backdrop band
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(0, 85, 400, 50);
+          // "ROUND N" text
+          drawText(ctx, 'ROUND ' + currentRound, 200, 100, '#FFFFFF', 16, 'center');
+        } else if (roundSplashPhase === 'fight') {
+          // Semi-transparent backdrop band (narrower for FIGHT)
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(0, 95, 400, 30);
+          // "FIGHT!" text in gold
+          drawText(ctx, 'FIGHT!', 200, 108, '#FFCC00', 16, 'center');
+        }
       }
 
       // KO splash overlay (during 90-frame countdown)

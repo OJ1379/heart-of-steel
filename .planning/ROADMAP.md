@@ -47,12 +47,12 @@ Plans:
   3. Matches play best-of-3 rounds with "ROUND N", "FIGHT!", and "K.O." splash screens between rounds and a round win indicator on the HUD
   4. After a match ends, a victory screen shows the winner with a pose animation and a prompt to play again
   5. Adding Biden required only a new data definition object -- no engine code changes were needed (architecture validation)
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md -- Biden fighter definition, portrait system, character select screen, scene flow rewiring (Title->CharSelect->Fight->Victory)
+- [ ] 02-02-PLAN.md -- AI state machine with difficulty scaling, round splash screens, best-of-3 verification, full gameplay checkpoint
 
 ### Phase 3: Full Roster + Stages
 **Goal**: All 5 fighters and all 4 stages are complete -- the player has the full content roster to choose from
@@ -94,6 +94,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Engine + Core Combat | 3/3 | Complete | 2026-03-28 |
-| 2. AI, Game Flow + Architecture Validation | 0/2 | Not started | - |
+| 2. AI, Game Flow + Architecture Validation | 0/2 | Planned | - |
 | 3. Full Roster + Stages | 0/2 | Not started | - |
 | 4. Ultimates, Wall Breaks + Audio | 0/3 | Not started | - |

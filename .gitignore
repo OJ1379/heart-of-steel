@@ -1,0 +1,31 @@
+# Windows user profile — never commit these
+NTUSER.DAT*
+ntuser.dat*
+ntuser.ini
+AppData/
+Application Data/
+Local Settings/
+My Documents/
+Contacts/
+Cookies/
+Desktop/
+Documents/
+Downloads/
+Favorites/
+Games/
+Links/
+OneDrive/
+Recent/
+Saved Games/
+Searches/
+SendTo/
+Start Menu/
+Videos/
+.android/
+.local/
+
+# Claude Code config (contains tokens)
+.claude.json
+
+# Claude internal files
+.claude/

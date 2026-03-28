@@ -12,7 +12,7 @@ Heart of Steel (H.O.S) is built bottom-up along its dependency chain: a solid en
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Engine + Core Combat** - Fixed-timestep engine, input, rendering, and one fully playable fighter (Trump) with all core combat mechanics on a single stage
+- [x] **Phase 1: Engine + Core Combat** - Fixed-timestep engine, input, rendering, and one fully playable fighter (Trump) with all core combat mechanics on a single stage
 - [ ] **Phase 2: AI, Game Flow + Architecture Validation** - AI opponent, full menu flow, round system, and second fighter (Biden) to validate data-driven architecture
 - [ ] **Phase 3: Full Roster + Stages** - Remaining 3 fighters (Obama, Bush, Clinton) and 3 stages, completing the content roster
 - [ ] **Phase 4: Ultimates, Wall Breaks + Audio** - Ultimate abilities, guard meter, juggle system, wall-break stage transitions, and full audio suite
@@ -33,9 +33,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **UI hint**: yes
 
 Plans:
-- [ ] 01-01-PLAN.md -- Engine foundation: HTML shell, canvas setup, game loop, input system, scene manager, sprite cache, White House stage
-- [ ] 01-02-PLAN.md -- Fighter system: Trump/CPU definitions, sprite art, state machine, movement, attacks, blocking, hit detection, hit stop, combos
-- [ ] 01-03-PLAN.md -- HUD and game flow: health bars, timer, round pips, KO splash, victory screen, complete game loop
+- [x] 01-01-PLAN.md -- Engine foundation: HTML shell, canvas setup, game loop, input system, scene manager, sprite cache, White House stage
+- [x] 01-02-PLAN.md -- Fighter system: Trump/CPU definitions, sprite art, state machine, movement, attacks, blocking, hit detection, hit stop, combos
+- [x] 01-03-PLAN.md -- HUD and game flow: health bars, timer, round pips, KO splash, victory screen, complete game loop
 
 ### Phase 2: AI, Game Flow + Architecture Validation
 **Goal**: The game is playable solo end-to-end -- player picks a fighter, CPU opponent fights back intelligently, best-of-3 rounds determine a winner, and the second fighter (Biden) proves the data-driven architecture works
@@ -93,7 +93,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine + Core Combat | 0/3 | Not started | - |
+| 1. Engine + Core Combat | 3/3 | Complete | 2026-03-28 |
 | 2. AI, Game Flow + Architecture Validation | 0/2 | Not started | - |
 | 3. Full Roster + Stages | 0/2 | Not started | - |
 | 4. Ultimates, Wall Breaks + Audio | 0/3 | Not started | - |

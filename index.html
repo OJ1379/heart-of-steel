@@ -1,0 +1,2063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heart of Steel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000000;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #game {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script>
+  // ===== CONSTANTS & CONFIG =====
+  const GAME_W = 400;
+  const GAME_H = 240;
+  const TICK_RATE = 1 / 60;
+  const MAX_FRAME_TIME = 0.25;
+  const INPUT_BUFFER_SIZE = 6;
+  const GROUND_Y = 192;
+  const STAGE_LEFT = 24;
+  const STAGE_RIGHT = 376;
+  const CHARGE_THRESHOLD = 12;
+
+  // HUD layout constants
+  const HUD_H = 28;
+
+  // ===== CANVAS SETUP =====
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d', { alpha: false });
+
+  canvas.width = GAME_W;
+  canvas.height = GAME_H;
+  ctx.imageSmoothingEnabled = false;
+
+  function resizeCanvas() {
+    const scale = Math.min(
+      window.innerWidth / GAME_W,
+      window.innerHeight / GAME_H
+    );
+    canvas.style.width = Math.floor(GAME_W * scale) + 'px';
+    canvas.style.height = Math.floor(GAME_H * scale) + 'px';
+  }
+  window.addEventListener('resize', resizeCanvas);
+
+  // ===== UTILITY FUNCTIONS =====
+  function aabbOverlap(a, b) {
+    return a.x < b.x + b.w &&
+           a.x + a.w > b.x &&
+           a.y < b.y + b.h &&
+           a.y + a.h > b.y;
+  }
+
+  function clamp(val, min, max) {
+    return val < min ? min : val > max ? max : val;
+  }
+
+  function drawText(ctx, text, x, y, color, size, align) {
+    const sz = size || 8;
+    const al = align || 'left';
+    ctx.font = sz + 'px monospace';
+    ctx.textAlign = al;
+    ctx.textBaseline = 'top';
+    // Shadow
+    ctx.fillStyle = '#000000';
+    ctx.fillText(text, Math.floor(x) + 1, Math.floor(y) + 1);
+    // Text
+    ctx.fillStyle = color || '#FFFFFF';
+    ctx.fillText(text, Math.floor(x), Math.floor(y));
+  }
+
+  // ===== INPUT SYSTEM =====
+  const keys = {};
+  const inputBuffer = [];
+  let attackHeldFrames = 0;
+  let prevAttack = false;
+
+  window.addEventListener('keydown', event => {
+    keys[event.key] = true;
+    // Prevent default for game keys to stop page scrolling
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(event.key)) {
+      event.preventDefault();
+    }
+  });
+  window.addEventListener('keyup', event => {
+    keys[event.key] = false;
+  });
+
+  function readInput() {
+    const input = {
+      left:    !!(keys['a'] || keys['ArrowLeft']),
+      right:   !!(keys['d'] || keys['ArrowRight']),
+      up:      !!(keys['w'] || keys['ArrowUp']),
+      down:    !!(keys['s'] || keys['ArrowDown']),
+      attack:  !!(keys['j'] || keys['z'] || keys['J'] || keys['Z']),
+      block:   !!(keys['k'] || keys['x'] || keys['K'] || keys['X']),
+      ultimate:!!(keys['l'] || keys['c'] || keys['L'] || keys['C']),
+      enter:   !!(keys['Enter'])
+    };
+
+    // Push to circular buffer
+    inputBuffer.push({ ...input });
+    if (inputBuffer.length > INPUT_BUFFER_SIZE) inputBuffer.shift();
+
+    // Edge detection
+    input.attackPressed  = input.attack && !prevAttack;
+    input.attackReleased = !input.attack && prevAttack;
+    prevAttack = input.attack;
+
+    // Check if attack was buffered in recent frames (for combo chains)
+    input.attackBuffered = inputBuffer.some(f => f.attack);
+
+    return input;
+  }
+
+  function updateChargeDetection(input) {
+    if (input.attack) {
+      attackHeldFrames++;
+      return null; // Still held
+    } else {
+      if (input.attackReleased) {
+        const frames = attackHeldFrames;
+        attackHeldFrames = 0;
+        if (frames >= CHARGE_THRESHOLD) return 'power';
+        if (frames > 0) return 'fast';
+      }
+      return null;
+    }
+  }
+
+  // ===== GAME LOOP =====
+  let accumulator = 0;
+  let lastTime = 0;
+  let frameCounter = 0;
+
+  function gameLoop(timestamp) {
+    requestAnimationFrame(gameLoop);
+
+    let dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    if (dt > MAX_FRAME_TIME) dt = MAX_FRAME_TIME;
+
+    accumulator += dt;
+    while (accumulator >= TICK_RATE) {
+      update();
+      accumulator -= TICK_RATE;
+    }
+    render();
+  }
+
+  function update() {
+    frameCounter++;
+    const input = readInput();
+    const result = scenes[currentScene].update(input);
+    if (result && result !== currentScene) {
+      currentScene = result;
+      if (scenes[currentScene].enter) scenes[currentScene].enter();
+    }
+  }
+
+  function render() {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, GAME_W, GAME_H);
+    scenes[currentScene].render(ctx);
+  }
+
+  // ===== SPRITE CACHE INFRASTRUCTURE =====
+  const spriteCache = {};
+
+  function initSpriteCache(fighterDefs) {
+    for (const def of fighterDefs) {
+      spriteCache[def.name] = {};
+      for (const [state, frames] of Object.entries(def.sprites)) {
+        spriteCache[def.name][state] = frames.map((drawFn) => {
+          const oc = document.createElement('canvas');
+          oc.width = def.spriteWidth || 64;
+          oc.height = def.spriteHeight || 56;
+          const octx = oc.getContext('2d');
+          octx.imageSmoothingEnabled = false;
+          drawFn(octx);
+          return oc;
+        });
+      }
+    }
+  }
+
+  function renderFighter(ctx, fighter) {
+    const stateFrames = spriteCache[fighter.def.name] &&
+                        spriteCache[fighter.def.name][fighter.state];
+    if (!stateFrames || stateFrames.length === 0) return;
+
+    const frame = stateFrames[Math.floor(fighter.currentFrame) % stateFrames.length];
+    const fx = Math.floor(fighter.x);
+    const fy = Math.floor(fighter.y);
+
+    // Flash white on hit
+    if (fighter.flashFrames > 0) {
+      ctx.save();
+      if (fighter.facing === -1) {
+        ctx.translate(fx, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(frame, -Math.floor(frame.width / 2), fy - frame.height);
+      } else {
+        ctx.drawImage(frame, fx - Math.floor(frame.width / 2), fy - frame.height);
+      }
+      // White overlay
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = '#FFFFFF';
+      if (fighter.facing === -1) {
+        ctx.fillRect(-Math.floor(frame.width / 2), fy - frame.height, frame.width, frame.height);
+      } else {
+        ctx.fillRect(fx - Math.floor(frame.width / 2), fy - frame.height, frame.width, frame.height);
+      }
+      ctx.restore();
+      fighter.flashFrames--;
+    } else {
+      ctx.save();
+      if (fighter.facing === -1) {
+        ctx.translate(fx, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(frame, -Math.floor(frame.width / 2), fy - frame.height);
+      } else {
+        ctx.drawImage(frame, fx - Math.floor(frame.width / 2), fy - frame.height);
+      }
+      ctx.restore();
+    }
+  }
+
+  // ===== SCENE MANAGER =====
+  let currentScene = 'title';
+
+  // ===== TITLE SCENE =====
+  // Draws the "HEART OF STEEL" logo using fillRect pixel art
+  function drawLogoLetter(octx, letter, ox, oy, color) {
+    octx.fillStyle = color;
+    // 5x7 pixel font patterns for each letter (stored as row bitmasks)
+    const glyphs = {
+      'H': [0b10001,0b10001,0b10001,0b11111,0b10001,0b10001,0b10001],
+      'E': [0b11111,0b10000,0b10000,0b11110,0b10000,0b10000,0b11111],
+      'A': [0b01110,0b10001,0b10001,0b11111,0b10001,0b10001,0b10001],
+      'R': [0b11110,0b10001,0b10001,0b11110,0b10100,0b10010,0b10001],
+      'T': [0b11111,0b00100,0b00100,0b00100,0b00100,0b00100,0b00100],
+      'O': [0b01110,0b10001,0b10001,0b10001,0b10001,0b10001,0b01110],
+      'F': [0b11111,0b10000,0b10000,0b11110,0b10000,0b10000,0b10000],
+      'S': [0b01111,0b10000,0b10000,0b01110,0b00001,0b00001,0b11110],
+      'L': [0b10000,0b10000,0b10000,0b10000,0b10000,0b10000,0b11111],
+      ' ': [0b00000,0b00000,0b00000,0b00000,0b00000,0b00000,0b00000],
+    };
+    const rows = glyphs[letter];
+    if (!rows) return 5; // default width
+    for (let row = 0; row < 7; row++) {
+      for (let col = 0; col < 5; col++) {
+        if (rows[row] & (1 << (4 - col))) {
+          octx.fillRect(ox + col * 2, oy + row * 2, 2, 2);
+        }
+      }
+    }
+    return 5 * 2 + 2; // 12px per char (5 pixels * 2 scale + 2 gap)
+  }
+
+  function drawLogoText(octx, text, startX, y, color) {
+    let x = startX;
+    for (const ch of text) {
+      x += drawLogoLetter(octx, ch, x, y, color);
+    }
+    return x - startX;
+  }
+
+  // Pre-render title logo to offscreen canvas
+  const logoCanvas = document.createElement('canvas');
+  logoCanvas.width = GAME_W;
+  logoCanvas.height = 60;
+  const logoctx = logoCanvas.getContext('2d');
+  logoctx.imageSmoothingEnabled = false;
+
+  function buildLogo() {
+    logoctx.clearRect(0, 0, logoCanvas.width, logoCanvas.height);
+
+    const line1 = 'HEART OF';
+    const line2 = 'STEEL';
+
+    // Calculate widths for centering
+    // Each char: 12px wide. Space: 12px.
+    const charW = 12;
+    const line1W = line1.length * charW - 2;
+    const line2W = line2.length * charW - 2;
+
+    const line1X = Math.floor((GAME_W - line1W) / 2);
+    const line2X = Math.floor((GAME_W - line2W) / 2);
+
+    // Draw gold shadow/outline slightly offset
+    drawLogoText(logoctx, line1, line1X + 1, 1 + 1, '#DAA520');
+    drawLogoText(logoctx, line1, line1X, 1, '#FFFFFF');
+
+    drawLogoText(logoctx, line2, line2X + 1, 19 + 1, '#DAA520');
+    drawLogoText(logoctx, line2, line2X, 19, '#FFCC00');
+  }
+
+  const titleScene = {
+    _frameCount: 0,
+    enter() {
+      this._frameCount = 0;
+    },
+    update(input) {
+      this._frameCount++;
+      if (input.enter) return 'fight';
+      return null;
+    },
+    render(ctx) {
+      // Dark near-black blue background
+      ctx.fillStyle = '#0A0A1A';
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+      // Subtle star field
+      ctx.fillStyle = '#FFFFFF';
+      const starSeeds = [7,23,41,59,83,101,137,163,191,211,239,257,283];
+      for (let i = 0; i < starSeeds.length; i++) {
+        const s = starSeeds[i];
+        const sx = (s * 31) % GAME_W;
+        const sy = (s * 17) % (GAME_H - 50) + 10;
+        ctx.fillRect(sx, sy, 1, 1);
+      }
+
+      // Logo
+      ctx.drawImage(logoCanvas, 0, 42);
+
+      // "PRESS ENTER TO START" blinking every 30 frames
+      const showPrompt = Math.floor(this._frameCount / 30) % 2 === 0;
+      if (showPrompt) {
+        drawText(ctx, 'PRESS ENTER TO START', 200, 190, '#FFFFFF', 8, 'center');
+      }
+
+      // Version text
+      drawText(ctx, 'H.O.S v0.1', 200, 225, '#555555', 8, 'center');
+    }
+  };
+
+  // ===== FIGHTER SPRITE DRAW FUNCTIONS =====
+
+  // --- TRUMP SPRITE FUNCTIONS ---
+  // Canvas is 64x56. Anchor: feet at y=56, center at x=32.
+  // Sprite body occupies roughly x:8-56, y:8-56 (48px tall)
+
+  function drawTrumpBase(c, offsetY, crouchFactor, armState, legState) {
+    // armState: 0=sides, 1=up, 2=guard, 3=punch, 4=windup, 5=swing, 6=recoil
+    // legState: 0=stand, 1=stride-a, 2=stride-b, 3=jump-tuck, 4=land, 5=crouch
+    // offsetY: vertical offset (for idle bob)
+    const oy = offsetY || 0;
+    const cf = crouchFactor || 0; // 0=stand, 1=fully crouched
+
+    // Compressed height: feet fixed at y=56, body compresses up
+    const bodyBot = 56; // feet
+    const standH = 48;
+    const crouchH = 30;
+    const bodyH = Math.floor(standH - (standH - crouchH) * cf);
+    const bodyTop = bodyBot - bodyH + oy;
+
+    // Proportions (normalized to bodyH)
+    const headH = Math.floor(bodyH * 0.29);   // ~14px at stand
+    const torsoH = Math.floor(bodyH * 0.35);  // ~17px at stand
+    const legH = bodyH - headH - torsoH;       // rest
+
+    const headTop = bodyTop;
+    const torsoTop = headTop + headH;
+    const legTop = torsoTop + torsoH;
+
+    // Colors
+    const hairPri = '#FFD700';
+    const hairSec = '#DAA520';
+    const skinPri = '#FFB366';
+    const skinSec = '#E8944D';
+    const suitPri = '#1A1A4E';
+    const suitSec = '#0D0D2B';
+    const shirt = '#FFFFFF';
+    const tiePri = '#CC0000';
+    const tieSec = '#990000';
+    const shoe = '#1A1A1A';
+    const outline = '#000000';
+
+    // === SHOES / LEGS ===
+    if (legState === 0) {
+      // Standing
+      c.fillStyle = suitPri;
+      c.fillRect(22, legTop, 8, legH - 4);   // left leg
+      c.fillRect(34, legTop, 8, legH - 4);   // right leg
+      c.fillStyle = shoe;
+      c.fillRect(20, legTop + legH - 4, 10, 4); // left shoe
+      c.fillRect(34, legTop + legH - 4, 10, 4); // right shoe
+    } else if (legState === 1) {
+      // Stride A: left leg forward
+      c.fillStyle = suitPri;
+      c.fillRect(19, legTop, 8, legH - 4);
+      c.fillRect(36, legTop + 2, 8, legH - 6);
+      c.fillStyle = shoe;
+      c.fillRect(17, legTop + legH - 4, 10, 4);
+      c.fillRect(34, legTop + legH - 6, 10, 4);
+    } else if (legState === 2) {
+      // Stride B: right leg forward
+      c.fillStyle = suitPri;
+      c.fillRect(21, legTop + 2, 8, legH - 6);
+      c.fillRect(34, legTop, 8, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(19, legTop + legH - 6, 10, 4);
+      c.fillRect(32, legTop + legH - 4, 10, 4);
+    } else if (legState === 3) {
+      // Jump tuck: knees up
+      const tuck = Math.floor(legH * 0.4);
+      c.fillStyle = suitPri;
+      c.fillRect(20, legTop + tuck, 9, legH - tuck - 2);
+      c.fillRect(34, legTop + tuck, 9, legH - tuck - 2);
+      c.fillStyle = shoe;
+      c.fillRect(19, legTop + legH - 2, 10, 3);
+      c.fillRect(34, legTop + legH - 2, 10, 3);
+    } else if (legState === 4) {
+      // Land: legs wide
+      c.fillStyle = suitPri;
+      c.fillRect(18, legTop, 9, legH - 4);
+      c.fillRect(36, legTop, 9, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(16, legTop + legH - 4, 11, 4);
+      c.fillRect(34, legTop + legH - 4, 11, 4);
+    } else if (legState === 5) {
+      // Crouch: short bent legs
+      c.fillStyle = suitPri;
+      c.fillRect(22, legTop, 8, legH - 2);
+      c.fillRect(34, legTop, 8, legH - 2);
+      c.fillStyle = shoe;
+      c.fillRect(20, legTop + legH - 2, 10, 3);
+      c.fillRect(34, legTop + legH - 2, 10, 3);
+    }
+
+    // === TORSO (suit) ===
+    c.fillStyle = suitPri;
+    c.fillRect(20, torsoTop, 24, torsoH);
+    // Suit lapels (darker)
+    c.fillStyle = suitSec;
+    c.fillRect(20, torsoTop, 4, torsoH);
+    c.fillRect(40, torsoTop, 4, torsoH);
+    // Shirt/tie visible in center
+    c.fillStyle = shirt;
+    c.fillRect(28, torsoTop, 8, 4); // collar area
+    // Tie
+    c.fillStyle = tiePri;
+    c.fillRect(30, torsoTop + 3, 4, Math.floor(torsoH * 0.6));
+    c.fillStyle = tieSec;
+    c.fillRect(31, torsoTop + 3, 2, Math.floor(torsoH * 0.6));
+
+    // === ARMS ===
+    if (armState === 0) {
+      // At sides
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);  // left arm
+      c.fillRect(44, torsoTop + 2, 6, torsoH - 4);  // right arm
+      c.fillStyle = skinPri;
+      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);  // left hand
+      c.fillRect(44, torsoTop + torsoH - 6, 6, 6);  // right hand
+    } else if (armState === 1) {
+      // Arms up (jump)
+      c.fillStyle = suitPri;
+      c.fillRect(12, torsoTop - 6, 6, torsoH - 2);  // left arm up
+      c.fillRect(46, torsoTop - 6, 6, torsoH - 2);  // right arm up
+      c.fillStyle = skinPri;
+      c.fillRect(12, torsoTop - 10, 6, 6);
+      c.fillRect(46, torsoTop - 10, 6, 6);
+    } else if (armState === 2) {
+      // Guard (block): arms crossed in front
+      c.fillStyle = suitPri;
+      c.fillRect(16, torsoTop + 2, 8, 6);   // left arm across
+      c.fillRect(40, torsoTop + 2, 8, 6);   // right arm across
+      c.fillStyle = skinPri;
+      c.fillRect(24, torsoTop + 2, 8, 6);   // left fist in front
+      c.fillRect(32, torsoTop + 2, 8, 6);   // right fist in front
+    } else if (armState === 3) {
+      // Punch: right arm extended forward (to the right)
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 6);  // left arm
+      c.fillStyle = skinPri;
+      c.fillRect(14, torsoTop + torsoH - 8, 6, 6);   // left hand
+      // Right arm extended
+      c.fillStyle = suitPri;
+      c.fillRect(44, torsoTop + 4, 14, 6);  // extended arm
+      c.fillStyle = skinPri;
+      c.fillRect(56, torsoTop + 4, 8, 6);   // fist (extends past body)
+    } else if (armState === 4) {
+      // Windup: both arms pulled back/up
+      c.fillStyle = suitPri;
+      c.fillRect(10, torsoTop - 4, 6, torsoH);      // left arm pulled back
+      c.fillRect(10, torsoTop, 12, 6);               // horizontal pull
+      c.fillStyle = skinPri;
+      c.fillRect(10, torsoTop - 8, 6, 6);            // left fist
+      c.fillStyle = suitPri;
+      c.fillRect(44, torsoTop - 2, 6, torsoH - 2);  // right arm
+      c.fillStyle = skinPri;
+      c.fillRect(44, torsoTop - 6, 6, 6);            // right fist
+    } else if (armState === 5) {
+      // Power swing: big forward arc
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);  // left arm
+      c.fillStyle = skinPri;
+      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);
+      // Right arm wide swing
+      c.fillStyle = suitPri;
+      c.fillRect(44, torsoTop, 16, 7);               // extended upper arm
+      c.fillRect(56, torsoTop + 6, 8, 6);            // forearm angled
+      c.fillStyle = skinPri;
+      c.fillRect(58, torsoTop + 10, 8, 6);           // big fist
+    } else if (armState === 6) {
+      // Recoil: arms flail out
+      c.fillStyle = suitPri;
+      c.fillRect(8, torsoTop, 8, 6);    // left arm out
+      c.fillRect(48, torsoTop, 8, 6);   // right arm out
+      c.fillStyle = skinPri;
+      c.fillRect(6, torsoTop, 6, 6);
+      c.fillRect(50, torsoTop, 6, 6);
+    }
+
+    // === HEAD ===
+    const headCX = 32;
+    const headW = 18;
+    c.fillStyle = outline;
+    c.fillRect(headCX - headW/2 - 1, headTop - 1, headW + 2, headH + 2);
+
+    c.fillStyle = skinPri;
+    c.fillRect(headCX - headW/2, headTop, headW, headH);
+    // Shading on right side
+    c.fillStyle = skinSec;
+    c.fillRect(headCX + 2, headTop, headW/2 - 1, headH);
+
+    // HAIR: signature Trump combover/pompadour
+    c.fillStyle = hairPri;
+    c.fillRect(headCX - headW/2, headTop - 4, headW, 6);   // main hair mass
+    c.fillRect(headCX - headW/2 - 2, headTop - 2, 4, 4);   // left hair sweep
+    c.fillRect(headCX + headW/2 - 2, headTop - 5, 6, 3);   // right combover
+    c.fillStyle = hairSec;
+    c.fillRect(headCX - headW/2, headTop - 4, headW, 2);   // hair highlight
+    c.fillRect(headCX + 2, headTop - 3, 8, 2);              // hair detail
+
+    // Eyes
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(headCX - 6, headTop + 4, 4, 3);   // left eye white
+    c.fillRect(headCX + 2, headTop + 4, 4, 3);   // right eye white
+    c.fillStyle = '#000000';
+    c.fillRect(headCX - 5, headTop + 5, 2, 2);   // left pupil
+    c.fillRect(headCX + 3, headTop + 5, 2, 2);   // right pupil
+
+    // Nose
+    c.fillStyle = skinSec;
+    c.fillRect(headCX - 1, headTop + 7, 3, 3);
+
+    // Mouth (neutral / pout)
+    c.fillStyle = '#CC7744';
+    c.fillRect(headCX - 4, headTop + headH - 5, 8, 2);
+  }
+
+  // Trump sprite state generators
+  function makeTrumpFrames(armState, legState, offsetY, crouchFactor) {
+    return function(c) {
+      drawTrumpBase(c, offsetY || 0, crouchFactor || 0, armState, legState);
+    };
+  }
+
+  // TRUMP definition object
+  const TRUMP = {
+    name: 'Trump',
+    spriteWidth: 64,
+    spriteHeight: 56,
+    stats: {
+      walkSpeed: 1.8,
+      jumpForce: -7.5,
+      gravity: 0.45,
+      health: 1000,
+      power: 1.3,
+      reach: 1.15,
+      hurtboxWidth: 36,
+      hurtboxHeight: 48,
+      crouchHurtboxHeight: 30
+    },
+    attacks: {
+      fast: {
+        startup: 4, active: 4, recovery: 8,
+        damage: 60, maxChain: 4,
+        hitbox: { x: 20, y: -20, w: 30, h: 16 },
+        hitstun: 12
+      },
+      power: {
+        startup: 12, active: 5, recovery: 18,
+        damage: 150, maxChain: 1,
+        hitbox: { x: 16, y: -28, w: 40, h: 24 },
+        hitstun: 24
+      }
+    },
+    sprites: {
+      idle: [
+        makeTrumpFrames(0, 0, 0, 0),    // neutral
+        makeTrumpFrames(0, 0, -1, 0),   // slightly up
+        makeTrumpFrames(0, 0, 0, 0),    // neutral
+        makeTrumpFrames(0, 0, 1, 0)     // slightly down
+      ],
+      walkForward: [
+        makeTrumpFrames(0, 0, 0, 0),
+        makeTrumpFrames(0, 1, 0, 0),
+        makeTrumpFrames(0, 0, 0, 0),
+        makeTrumpFrames(0, 2, 0, 0)
+      ],
+      walkBack: [
+        makeTrumpFrames(0, 0, 0, 0),
+        makeTrumpFrames(0, 2, 0, 0),
+        makeTrumpFrames(0, 0, 0, 0),
+        makeTrumpFrames(0, 1, 0, 0)
+      ],
+      jumpRise: [
+        makeTrumpFrames(1, 0, 0, 0),
+        makeTrumpFrames(1, 3, -1, 0),
+        makeTrumpFrames(1, 3, -2, 0),
+        makeTrumpFrames(1, 3, -2, 0)
+      ],
+      jumpFall: [
+        makeTrumpFrames(1, 3, 0, 0),
+        makeTrumpFrames(0, 3, 0, 0),
+        makeTrumpFrames(0, 4, 1, 0),
+        makeTrumpFrames(0, 4, 2, 0)
+      ],
+      crouch: [
+        makeTrumpFrames(0, 5, 0, 0.25),
+        makeTrumpFrames(0, 5, 0, 0.5),
+        makeTrumpFrames(0, 5, 0, 0.75),
+        makeTrumpFrames(0, 5, 0, 1.0)
+      ],
+      fastAttack: [
+        makeTrumpFrames(0, 0, 0, 0),   // startup frame 0: arm back
+        makeTrumpFrames(0, 0, 0, 0),   // startup frame 1: arm cocking
+        makeTrumpFrames(3, 0, 0, 0),   // active frame 2: fist extended
+        makeTrumpFrames(0, 0, 0, 0)    // recovery frame 3: arm returning
+      ],
+      powerAttack: [
+        makeTrumpFrames(4, 0, 0, 0),   // startup: windup begins
+        makeTrumpFrames(4, 0, -1, 0),  // startup: windup peak
+        makeTrumpFrames(4, 0, -1, 0),  // startup: fully wound
+        makeTrumpFrames(5, 0, 0, 0)    // active: big swing
+      ],
+      block: [
+        makeTrumpFrames(0, 0, 0, 0),
+        makeTrumpFrames(2, 0, 0, 0),
+        makeTrumpFrames(2, 0, 0, 0),
+        makeTrumpFrames(2, 0, 0, 0)
+      ],
+      hitstun: [
+        makeTrumpFrames(6, 0, 0, 0),
+        makeTrumpFrames(6, 0, 1, 0),
+        makeTrumpFrames(6, 0, 1, 0),
+        makeTrumpFrames(6, 0, 0, 0)
+      ],
+      knockdown: [
+        makeTrumpFrames(6, 0, 0, 0),
+        function(c) {
+          // Falling: body tilted
+          const suitPri = '#1A1A4E'; const skinPri = '#FFB366';
+          const hairPri = '#FFD700'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(10, 30, 44, 12);
+          c.fillStyle = skinPri; c.fillRect(8, 26, 16, 12);
+          c.fillStyle = hairPri; c.fillRect(6, 22, 18, 6);
+          c.fillStyle = shoe; c.fillRect(44, 36, 14, 6);
+        },
+        function(c) {
+          // Nearly down
+          const suitPri = '#1A1A4E'; const skinPri = '#FFB366';
+          const hairPri = '#FFD700'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(8, 38, 46, 10);
+          c.fillStyle = skinPri; c.fillRect(6, 32, 14, 10);
+          c.fillStyle = hairPri; c.fillRect(4, 28, 16, 6);
+          c.fillStyle = shoe; c.fillRect(44, 42, 14, 6);
+        },
+        function(c) {
+          // On ground
+          const suitPri = '#1A1A4E'; const skinPri = '#FFB366';
+          const hairPri = '#FFD700'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(6, 44, 50, 8);
+          c.fillStyle = skinPri; c.fillRect(4, 40, 14, 8);
+          c.fillStyle = hairPri; c.fillRect(2, 36, 16, 6);
+          c.fillStyle = shoe; c.fillRect(46, 46, 12, 6);
+        }
+      ]
+    }
+  };
+
+  // --- PLACEHOLDER CPU SPRITE (gray palette recolor of Trump silhouette) ---
+  function drawCPUBase(c, offsetY, crouchFactor, armState, legState) {
+    const oy = offsetY || 0;
+    const cf = crouchFactor || 0;
+
+    const bodyBot = 56;
+    const standH = 48;
+    const crouchH = 30;
+    const bodyH = Math.floor(standH - (standH - crouchH) * cf);
+    const bodyTop = bodyBot - bodyH + oy;
+
+    const headH = Math.floor(bodyH * 0.29);
+    const torsoH = Math.floor(bodyH * 0.35);
+    const legH = bodyH - headH - torsoH;
+
+    const headTop = bodyTop;
+    const torsoTop = headTop + headH;
+    const legTop = torsoTop + torsoH;
+
+    // Gray CPU palette
+    const pri = '#666666';
+    const sec = '#888888';
+    const dark = '#444444';
+    const outline = '#333333';
+    const shoe = '#222222';
+
+    // Outline
+    c.fillStyle = outline;
+
+    // Legs
+    if (legState === 0) {
+      c.fillStyle = pri;
+      c.fillRect(22, legTop, 8, legH - 4);
+      c.fillRect(34, legTop, 8, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(20, legTop + legH - 4, 10, 4);
+      c.fillRect(34, legTop + legH - 4, 10, 4);
+    } else if (legState === 1) {
+      c.fillStyle = pri;
+      c.fillRect(19, legTop, 8, legH - 4);
+      c.fillRect(36, legTop + 2, 8, legH - 6);
+      c.fillStyle = shoe;
+      c.fillRect(17, legTop + legH - 4, 10, 4);
+      c.fillRect(34, legTop + legH - 6, 10, 4);
+    } else if (legState === 2) {
+      c.fillStyle = pri;
+      c.fillRect(21, legTop + 2, 8, legH - 6);
+      c.fillRect(34, legTop, 8, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(19, legTop + legH - 6, 10, 4);
+      c.fillRect(32, legTop + legH - 4, 10, 4);
+    } else if (legState === 5) {
+      c.fillStyle = pri;
+      c.fillRect(22, legTop, 8, legH - 2);
+      c.fillRect(34, legTop, 8, legH - 2);
+      c.fillStyle = shoe;
+      c.fillRect(20, legTop + legH - 2, 10, 3);
+      c.fillRect(34, legTop + legH - 2, 10, 3);
+    } else {
+      c.fillStyle = pri;
+      c.fillRect(22, legTop, 8, legH - 4);
+      c.fillRect(34, legTop, 8, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(20, legTop + legH - 4, 10, 4);
+      c.fillRect(34, legTop + legH - 4, 10, 4);
+    }
+
+    // Torso
+    c.fillStyle = pri;
+    c.fillRect(20, torsoTop, 24, torsoH);
+    c.fillStyle = dark;
+    c.fillRect(20, torsoTop, 4, torsoH);
+    c.fillRect(40, torsoTop, 4, torsoH);
+    c.fillStyle = sec;
+    c.fillRect(28, torsoTop, 8, 4);
+
+    // Arms
+    if (armState === 0) {
+      c.fillStyle = pri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);
+      c.fillRect(44, torsoTop + 2, 6, torsoH - 4);
+      c.fillStyle = sec;
+      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);
+      c.fillRect(44, torsoTop + torsoH - 6, 6, 6);
+    } else if (armState === 2) {
+      c.fillStyle = pri;
+      c.fillRect(16, torsoTop + 2, 8, 6);
+      c.fillRect(40, torsoTop + 2, 8, 6);
+      c.fillStyle = sec;
+      c.fillRect(24, torsoTop + 2, 8, 6);
+      c.fillRect(32, torsoTop + 2, 8, 6);
+    } else if (armState === 6) {
+      c.fillStyle = pri;
+      c.fillRect(8, torsoTop, 8, 6);
+      c.fillRect(48, torsoTop, 8, 6);
+      c.fillStyle = sec;
+      c.fillRect(6, torsoTop, 6, 6);
+      c.fillRect(50, torsoTop, 6, 6);
+    } else {
+      c.fillStyle = pri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);
+      c.fillRect(44, torsoTop + 2, 6, torsoH - 4);
+      c.fillStyle = sec;
+      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);
+      c.fillRect(44, torsoTop + torsoH - 6, 6, 6);
+    }
+
+    // Head
+    const headCX = 32;
+    const headW = 18;
+    c.fillStyle = outline;
+    c.fillRect(headCX - headW/2 - 1, headTop - 1, headW + 2, headH + 2);
+    c.fillStyle = sec;
+    c.fillRect(headCX - headW/2, headTop, headW, headH);
+    c.fillStyle = dark;
+    c.fillRect(headCX + 2, headTop, headW/2 - 1, headH);
+
+    // "Hair" (darker area)
+    c.fillStyle = dark;
+    c.fillRect(headCX - headW/2, headTop - 3, headW, 5);
+
+    // Eyes
+    c.fillStyle = '#CCCCCC';
+    c.fillRect(headCX - 6, headTop + 4, 4, 3);
+    c.fillRect(headCX + 2, headTop + 4, 4, 3);
+    c.fillStyle = '#000000';
+    c.fillRect(headCX - 5, headTop + 5, 2, 2);
+    c.fillRect(headCX + 3, headTop + 5, 2, 2);
+  }
+
+  function makeCPUFrames(armState, legState, offsetY, crouchFactor) {
+    return function(c) {
+      drawCPUBase(c, offsetY || 0, crouchFactor || 0, armState, legState);
+    };
+  }
+
+  const PLACEHOLDER_CPU = {
+    name: 'CPU',
+    spriteWidth: 64,
+    spriteHeight: 56,
+    stats: {
+      walkSpeed: 0.9,          // ~50% of Trump
+      jumpForce: -7.5,
+      gravity: 0.45,
+      health: 1000,
+      power: 1.0,
+      reach: 1.0,
+      hurtboxWidth: 36,
+      hurtboxHeight: 48,
+      crouchHurtboxHeight: 30
+    },
+    attacks: {
+      fast: {
+        startup: 4, active: 4, recovery: 8,
+        damage: 60, maxChain: 4,
+        hitbox: { x: 20, y: -20, w: 30, h: 16 },
+        hitstun: 12
+      },
+      power: {
+        startup: 12, active: 5, recovery: 18,
+        damage: 150, maxChain: 1,
+        hitbox: { x: 16, y: -28, w: 40, h: 24 },
+        hitstun: 24
+      }
+    },
+    sprites: {
+      idle: [
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, -1, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 1, 0)
+      ],
+      walkForward: [
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 1, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 2, 0, 0)
+      ],
+      walkBack: [
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 2, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 1, 0, 0)
+      ],
+      jumpRise: [
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0)
+      ],
+      jumpFall: [
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0)
+      ],
+      crouch: [
+        makeCPUFrames(0, 5, 0, 0.25),
+        makeCPUFrames(0, 5, 0, 0.5),
+        makeCPUFrames(0, 5, 0, 0.75),
+        makeCPUFrames(0, 5, 0, 1.0)
+      ],
+      fastAttack: [
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0)
+      ],
+      powerAttack: [
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(0, 0, 0, 0)
+      ],
+      block: [
+        makeCPUFrames(0, 0, 0, 0),
+        makeCPUFrames(2, 0, 0, 0),
+        makeCPUFrames(2, 0, 0, 0),
+        makeCPUFrames(2, 0, 0, 0)
+      ],
+      hitstun: [
+        makeCPUFrames(6, 0, 0, 0),
+        makeCPUFrames(6, 0, 1, 0),
+        makeCPUFrames(6, 0, 1, 0),
+        makeCPUFrames(6, 0, 0, 0)
+      ],
+      knockdown: [
+        makeCPUFrames(6, 0, 0, 0),
+        function(c) {
+          const pri = '#666666'; const sec = '#888888'; const dark = '#444444';
+          c.fillStyle = pri; c.fillRect(10, 30, 44, 12);
+          c.fillStyle = sec; c.fillRect(8, 26, 16, 12);
+          c.fillStyle = dark; c.fillRect(6, 22, 18, 6);
+          c.fillStyle = '#222222'; c.fillRect(44, 36, 14, 6);
+        },
+        function(c) {
+          const pri = '#666666'; const sec = '#888888'; const dark = '#444444';
+          c.fillStyle = pri; c.fillRect(8, 38, 46, 10);
+          c.fillStyle = sec; c.fillRect(6, 32, 14, 10);
+          c.fillStyle = dark; c.fillRect(4, 28, 16, 6);
+          c.fillStyle = '#222222'; c.fillRect(44, 42, 14, 6);
+        },
+        function(c) {
+          const pri = '#666666'; const sec = '#888888'; const dark = '#444444';
+          c.fillStyle = pri; c.fillRect(6, 44, 50, 8);
+          c.fillStyle = sec; c.fillRect(4, 40, 14, 8);
+          c.fillStyle = dark; c.fillRect(2, 36, 16, 6);
+          c.fillStyle = '#222222'; c.fillRect(46, 46, 12, 6);
+        }
+      ]
+    }
+  };
+
+  // ===== FIGHTER RUNTIME FACTORY =====
+  function createFighter(def, x, facing) {
+    return {
+      def: def,
+      x: x,
+      y: GROUND_Y,
+      vx: 0,
+      vy: 0,
+      facing: facing,
+      state: 'idle',
+      prevState: 'idle',
+      stateFrame: 0,
+      currentFrame: 0,
+      attackPhase: null,
+      currentAttackType: null,
+      comboCount: 0,
+      health: def.stats.health,
+      isBlocking: false,
+      hitThisAttack: false,
+      hitstunRemaining: 0,
+      knockedDown: false,
+      flashFrames: 0,
+      _chargeFrames: 0,     // per-fighter charge tracking
+      _prevAttack: false
+    };
+  }
+
+  // ===== FIGHTER STATE MACHINE =====
+  function transitionFighterState(fighter, newState) {
+    if (fighter.state === newState) return;
+    const oldState = fighter.state;
+    if (FIGHTER_STATES[oldState] && FIGHTER_STATES[oldState].exit) {
+      FIGHTER_STATES[oldState].exit(fighter);
+    }
+    fighter.prevState = oldState;
+    fighter.state = newState;
+    fighter.stateFrame = 0;
+    if (FIGHTER_STATES[newState] && FIGHTER_STATES[newState].enter) {
+      FIGHTER_STATES[newState].enter(fighter);
+    }
+  }
+
+  const FIGHTER_STATES = {
+    idle: {
+      enter(fighter) {
+        fighter.currentFrame = 0;
+        fighter.attackPhase = null;
+        fighter.currentAttackType = null;
+        fighter.isBlocking = false;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        // Animate idle: advance every 15 ticks
+        if (fighter.stateFrame % 15 === 0) {
+          fighter.currentFrame = (fighter.currentFrame + 1) % 4;
+        }
+        // Input transitions
+        if (input.up) return 'jumpRise';
+        if (input.down) return 'crouch';
+        // Walk: check facing vs direction key
+        if (input.right) {
+          return fighter.facing === 1 ? 'walkForward' : 'walkBack';
+        }
+        if (input.left) {
+          return fighter.facing === -1 ? 'walkForward' : 'walkBack';
+        }
+        // Attack: charge detection
+        const attackType = updateFighterCharge(fighter, input);
+        if (attackType === 'fast') return 'fastAttack';
+        if (attackType === 'power') return 'powerAttack';
+        if (input.block) return 'block';
+        return null;
+      },
+      exit(fighter) {}
+    },
+
+    walkForward: {
+      enter(fighter) {
+        fighter.currentFrame = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        // Move forward
+        const spd = fighter.def.stats.walkSpeed;
+        fighter.x = clamp(fighter.x + spd * fighter.facing, STAGE_LEFT, STAGE_RIGHT);
+        // Animate every 8 ticks
+        if (fighter.stateFrame % 8 === 0) {
+          fighter.currentFrame = (fighter.currentFrame + 1) % 4;
+        }
+        // Check if still moving forward
+        const movingForward = (fighter.facing === 1 && input.right) ||
+                              (fighter.facing === -1 && input.left);
+        if (!movingForward) return 'idle';
+        if (input.up) return 'jumpRise';
+        if (input.down) return 'crouch';
+        const attackType = updateFighterCharge(fighter, input);
+        if (attackType === 'fast') return 'fastAttack';
+        if (attackType === 'power') return 'powerAttack';
+        if (input.block) return 'block';
+        return null;
+      },
+      exit(fighter) {}
+    },
+
+    walkBack: {
+      enter(fighter) {
+        fighter.currentFrame = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        // Move backward
+        const spd = fighter.def.stats.walkSpeed;
+        fighter.x = clamp(fighter.x - spd * fighter.facing, STAGE_LEFT, STAGE_RIGHT);
+        // Animate every 8 ticks
+        if (fighter.stateFrame % 8 === 0) {
+          fighter.currentFrame = (fighter.currentFrame + 1) % 4;
+        }
+        // Check if still moving back
+        const movingBack = (fighter.facing === 1 && input.left) ||
+                           (fighter.facing === -1 && input.right);
+        if (!movingBack) return 'idle';
+        if (input.up) return 'jumpRise';
+        const attackType = updateFighterCharge(fighter, input);
+        if (attackType === 'fast') return 'fastAttack';
+        if (attackType === 'power') return 'powerAttack';
+        if (input.block) return 'block';
+        return null;
+      },
+      exit(fighter) {}
+    },
+
+    jumpRise: {
+      enter(fighter) {
+        fighter.vy = fighter.def.stats.jumpForce;
+        fighter.currentFrame = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        fighter.vy += fighter.def.stats.gravity;
+        fighter.y += fighter.vy;
+        // Map frame to rise phase
+        fighter.currentFrame = Math.min(3, Math.floor(fighter.stateFrame / 4));
+        if (fighter.vy >= 0) return 'jumpFall';
+        return null;
+      },
+      exit(fighter) {}
+    },
+
+    jumpFall: {
+      enter(fighter) {
+        fighter.currentFrame = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        fighter.vy += fighter.def.stats.gravity;
+        fighter.y += fighter.vy;
+        fighter.currentFrame = Math.min(3, Math.floor(fighter.stateFrame / 4));
+        // Landing check
+        if (fighter.y >= GROUND_Y) {
+          fighter.y = GROUND_Y;
+          fighter.vy = 0;
+          return 'idle';
+        }
+        return null;
+      },
+      exit(fighter) {}
+    },
+
+    crouch: {
+      enter(fighter) {
+        fighter.currentFrame = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        // Animate to frame 3 and hold
+        if (fighter.currentFrame < 3 && fighter.stateFrame % 3 === 0) {
+          fighter.currentFrame++;
+        }
+        if (!input.down) return 'idle';
+        const attackType = updateFighterCharge(fighter, input);
+        if (attackType === 'fast') return 'fastAttack';
+        if (attackType === 'power') return 'powerAttack';
+        return null;
+      },
+      exit(fighter) {}
+    },
+
+    fastAttack: {
+      enter(fighter) {
+        fighter.attackPhase = 'startup';
+        fighter.currentAttackType = 'fast';
+        fighter.hitThisAttack = false;
+        fighter.comboCount = (fighter.comboCount || 0) + 1;
+        fighter.currentFrame = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        const fd = fighter.def.attacks.fast;
+        const total = fd.startup + fd.active + fd.recovery;
+
+        if (fighter.stateFrame <= fd.startup) {
+          fighter.attackPhase = 'startup';
+          // Map to frames 0-1
+          fighter.currentFrame = Math.floor((fighter.stateFrame / fd.startup) * 2);
+        } else if (fighter.stateFrame <= fd.startup + fd.active) {
+          fighter.attackPhase = 'active';
+          fighter.currentFrame = 2; // active = frame 2
+        } else if (fighter.stateFrame <= total) {
+          fighter.attackPhase = 'recovery';
+          fighter.currentFrame = 3; // recovery = frame 3
+          // Check for combo chain during recovery
+          if (input.attackBuffered && fighter.comboCount < fd.maxChain) {
+            return 'fastAttack';
+          }
+        } else {
+          fighter.attackPhase = null;
+          fighter.comboCount = 0;
+          return 'idle';
+        }
+        return null;
+      },
+      exit(fighter) {
+        fighter.attackPhase = null;
+        fighter.hitThisAttack = false;
+      }
+    },
+
+    powerAttack: {
+      enter(fighter) {
+        fighter.attackPhase = 'startup';
+        fighter.currentAttackType = 'power';
+        fighter.hitThisAttack = false;
+        fighter.comboCount = 0;
+        fighter.currentFrame = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        const fd = fighter.def.attacks.power;
+        const total = fd.startup + fd.active + fd.recovery;
+
+        if (fighter.stateFrame <= fd.startup) {
+          fighter.attackPhase = 'startup';
+          // Map to frames 0-2 (windup)
+          fighter.currentFrame = Math.min(2, Math.floor((fighter.stateFrame / fd.startup) * 3));
+        } else if (fighter.stateFrame <= fd.startup + fd.active) {
+          fighter.attackPhase = 'active';
+          fighter.currentFrame = 3; // active = frame 3 (the big swing)
+        } else if (fighter.stateFrame <= total) {
+          fighter.attackPhase = 'recovery';
+          fighter.currentFrame = 0; // retracting
+        } else {
+          fighter.attackPhase = null;
+          return 'idle';
+        }
+        return null;
+      },
+      exit(fighter) {
+        fighter.attackPhase = null;
+        fighter.hitThisAttack = false;
+      }
+    },
+
+    block: {
+      enter(fighter) {
+        fighter.isBlocking = true;
+        fighter.currentFrame = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        // Animate to frame 3 and hold
+        if (fighter.currentFrame < 3 && fighter.stateFrame % 4 === 0) {
+          fighter.currentFrame++;
+        }
+        if (!input.block) {
+          fighter.isBlocking = false;
+          return 'idle';
+        }
+        return null;
+      },
+      exit(fighter) {
+        fighter.isBlocking = false;
+      }
+    },
+
+    hitstun: {
+      enter(fighter) {
+        fighter.currentFrame = 0;
+        fighter.comboCount = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        fighter.currentFrame = Math.min(3, Math.floor(fighter.stateFrame / 3));
+        if (fighter.hitstunRemaining > 0) {
+          fighter.hitstunRemaining--;
+          return null;
+        }
+        return 'idle';
+      },
+      exit(fighter) {
+        fighter.hitstunRemaining = 0;
+      }
+    },
+
+    knockdown: {
+      enter(fighter) {
+        fighter.currentFrame = 0;
+        fighter.knockedDown = true;
+        fighter.comboCount = 0;
+      },
+      update(fighter, input, opponent) {
+        fighter.stateFrame++;
+        // Play animation to frame 3 then hold
+        if (fighter.currentFrame < 3 && fighter.stateFrame % 10 === 0) {
+          fighter.currentFrame++;
+        }
+        // Get up after 60 frames
+        if (fighter.stateFrame >= 60 && fighter.health > 0) {
+          fighter.knockedDown = false;
+          return 'idle';
+        }
+        return null;
+      },
+      exit(fighter) {
+        fighter.knockedDown = false;
+      }
+    }
+  };
+
+  // Per-fighter charge detection (each fighter has independent charge tracking)
+  function updateFighterCharge(fighter, input) {
+    const attackNow = input.attack;
+    const wasAttack = fighter._prevAttack;
+    fighter._prevAttack = attackNow;
+
+    if (attackNow) {
+      fighter._chargeFrames++;
+      return null;
+    } else {
+      if (wasAttack) {
+        // Key released
+        const frames = fighter._chargeFrames;
+        fighter._chargeFrames = 0;
+        if (frames >= CHARGE_THRESHOLD) return 'power';
+        if (frames > 0) return 'fast';
+      } else {
+        fighter._chargeFrames = 0;
+      }
+      return null;
+    }
+  }
+
+  // ===== FIGHTER UPDATE =====
+  function updateFighter(fighter, input, opponent) {
+    // Superstate: hitstun check
+    if (fighter.hitstunRemaining > 0 && fighter.state !== 'knockdown') {
+      if (fighter.state !== 'hitstun') {
+        transitionFighterState(fighter, 'hitstun');
+      }
+    }
+
+    // Run current state's update
+    const stateHandler = FIGHTER_STATES[fighter.state];
+    if (!stateHandler) return;
+
+    const next = stateHandler.update(fighter, input, opponent);
+    if (next) {
+      transitionFighterState(fighter, next);
+    }
+
+    // Auto-facing: face opponent when not attacking/hitstun/knockdown
+    const noFaceLock = ['fastAttack','powerAttack','hitstun','knockdown'];
+    if (!noFaceLock.includes(fighter.state)) {
+      if (opponent) {
+        fighter.facing = opponent.x > fighter.x ? 1 : -1;
+      }
+    }
+
+    // Apply gravity when airborne
+    if (fighter.y < GROUND_Y && fighter.state !== 'jumpRise' && fighter.state !== 'jumpFall') {
+      fighter.vy += fighter.def.stats.gravity;
+      fighter.y += fighter.vy;
+      if (fighter.y >= GROUND_Y) {
+        fighter.y = GROUND_Y;
+        fighter.vy = 0;
+        if (fighter.state !== 'knockdown') {
+          transitionFighterState(fighter, 'idle');
+        }
+      }
+    }
+  }
+
+  // ===== PUSH-BACK COLLISION (prevent overlap) =====
+  function resolveFighterOverlap(f1, f2) {
+    const hw1 = f1.def.stats.hurtboxWidth / 2;
+    const hw2 = f2.def.stats.hurtboxWidth / 2;
+    const dist = Math.abs(f1.x - f2.x);
+    const minDist = hw1 + hw2 - 4; // allow slight overlap
+    if (dist < minDist) {
+      const push = (minDist - dist) / 2;
+      if (f1.x < f2.x) {
+        f1.x = clamp(f1.x - push, STAGE_LEFT, STAGE_RIGHT);
+        f2.x = clamp(f2.x + push, STAGE_LEFT, STAGE_RIGHT);
+      } else {
+        f1.x = clamp(f1.x + push, STAGE_LEFT, STAGE_RIGHT);
+        f2.x = clamp(f2.x - push, STAGE_LEFT, STAGE_RIGHT);
+      }
+    }
+  }
+
+  // ===== HIT DETECTION & COMBAT SYSTEM =====
+  let hitStopFramesRemaining = 0;
+
+  function applyHitStop(frames) {
+    hitStopFramesRemaining = frames;
+  }
+
+  function checkHit(attacker, defender) {
+    if (attacker.attackPhase !== 'active') return false;
+    if (attacker.hitThisAttack) return false;
+
+    const atk = attacker.def.attacks[attacker.currentAttackType];
+    if (!atk) return false;
+
+    // Hitbox in world space (accounting for facing and reach)
+    const reachMul = attacker.def.stats.reach;
+    let hbX;
+    if (attacker.facing === 1) {
+      hbX = attacker.x + atk.hitbox.x * reachMul;
+    } else {
+      hbX = attacker.x - atk.hitbox.x * reachMul - Math.floor(atk.hitbox.w * reachMul);
+    }
+    const hitbox = {
+      x: Math.floor(hbX),
+      y: Math.floor(attacker.y + atk.hitbox.y),
+      w: Math.floor(atk.hitbox.w * reachMul),
+      h: atk.hitbox.h
+    };
+
+    // Defender hurtbox
+    const hurtH = (defender.state === 'crouch')
+      ? defender.def.stats.crouchHurtboxHeight
+      : defender.def.stats.hurtboxHeight;
+    const hurtbox = {
+      x: Math.floor(defender.x - defender.def.stats.hurtboxWidth / 2),
+      y: Math.floor(defender.y - hurtH),
+      w: defender.def.stats.hurtboxWidth,
+      h: hurtH
+    };
+
+    return aabbOverlap(hitbox, hurtbox);
+  }
+
+  function resolveHit(attacker, defender) {
+    // Mark so multi-hit doesn't fire on same attack
+    attacker.hitThisAttack = true;
+
+    const atk = attacker.def.attacks[attacker.currentAttackType];
+
+    // Base damage with attacker power multiplier
+    const baseDamage = Math.floor(atk.damage * attacker.def.stats.power);
+
+    // Apply block reduction (80% reduction)
+    let damage;
+    if (defender.isBlocking) {
+      damage = Math.floor(baseDamage * 0.2);
+    } else {
+      damage = baseDamage;
+    }
+
+    // Apply damage
+    defender.health = Math.max(0, defender.health - damage);
+
+    // Hit stop
+    if (attacker.currentAttackType === 'power') {
+      applyHitStop(5);
+    } else {
+      applyHitStop(3);
+    }
+
+    // Flash defender white
+    defender.flashFrames = 2;
+
+    // If not blocking: hitstun + knockback
+    if (!defender.isBlocking) {
+      if (defender.health <= 0) {
+        transitionFighterState(defender, 'knockdown');
+      } else {
+        defender.hitstunRemaining = atk.hitstun;
+        transitionFighterState(defender, 'hitstun');
+      }
+      // Knockback
+      defender.x = clamp(defender.x + 8 * attacker.facing, STAGE_LEFT, STAGE_RIGHT);
+    } else {
+      // Small pushback on block
+      defender.x = clamp(defender.x + 3 * attacker.facing, STAGE_LEFT, STAGE_RIGHT);
+    }
+  }
+
+  // ===== CPU AI =====
+  function getCPUInput(cpu, player) {
+    const input = {
+      left: false, right: false, up: false, down: false,
+      attack: false, block: false, ultimate: false, enter: false,
+      attackPressed: false, attackReleased: false, attackBuffered: false
+    };
+
+    if (cpu.knockedDown || cpu.state === 'knockdown') return input;
+
+    const dist = Math.abs(cpu.x - player.x);
+
+    // Block when player is attacking (20% per-tick probability)
+    const playerAttacking = (player.state === 'fastAttack' || player.state === 'powerAttack');
+    if (playerAttacking && Math.random() < 0.003) {
+      input.block = true;
+      return input;
+    }
+
+    // Move toward player if far enough away
+    if (dist > 60) {
+      if (player.x > cpu.x) {
+        input.right = true;
+      } else {
+        input.left = true;
+      }
+    }
+
+    return input;
+  }
+
+  // ===== HUD RENDERING =====
+  function drawHealthBar(ctx, x, y, w, h, current, max, isPlayer) {
+    const pct = Math.max(0, current / max);
+    // Border
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+    // Background (empty health)
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(x, y, w, h);
+    // Fill color
+    const fillW = Math.floor(w * pct);
+    let color;
+    if (pct > 0.5) color = '#00CC00';
+    else if (pct > 0.25) color = '#FFCC00';
+    else color = '#CC0000';
+    ctx.fillStyle = color;
+    if (isPlayer) {
+      ctx.fillRect(x, y, fillW, h);
+    } else {
+      ctx.fillRect(x + w - fillW, y, fillW, h);
+    }
+    // Highlight line (3D bevel)
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    if (isPlayer) {
+      if (fillW > 0) ctx.fillRect(x, y, fillW, 1);
+    } else {
+      if (fillW > 0) ctx.fillRect(x + w - fillW, y, fillW, 1);
+    }
+  }
+
+  function drawRoundPips(ctx, x, y, winsCount) {
+    // Draw 2 round win pips (4x4 filled squares)
+    ctx.fillStyle = winsCount >= 1 ? '#FFCC00' : '#555555';
+    ctx.fillRect(x, y, 4, 4);
+    ctx.fillStyle = winsCount >= 2 ? '#FFCC00' : '#555555';
+    ctx.fillRect(x + 8, y, 4, 4);
+  }
+
+  function drawHUD(ctx, player, cpu, roundTimer, p1Wins, p2Wins) {
+    // HUD background strip
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, GAME_W, HUD_H);
+
+    // P1 Name
+    drawText(ctx, player.def.name.toUpperCase(), 16, 8, '#FFFFFF', 8, 'left');
+
+    // P1 Health bar
+    drawHealthBar(ctx, 48, 8, 128, 8, player.health, player.def.stats.health, true);
+
+    // Timer label and value (centered)
+    const timerColor = roundTimer < 600 ? '#CC0000' : '#FFFFFF';
+    drawText(ctx, 'TIME', 200, 2, '#FFFFFF', 8, 'center');
+    drawText(ctx, String(Math.ceil(roundTimer / 60)), 200, 12, timerColor, 8, 'center');
+
+    // P2 Health bar (fills right-to-left)
+    drawHealthBar(ctx, 224, 8, 128, 8, cpu.health, cpu.def.stats.health, false);
+
+    // P2 Name (right-aligned)
+    drawText(ctx, cpu.def.name.toUpperCase(), 360, 8, '#FFFFFF', 8, 'right');
+
+    // Round win pips
+    drawRoundPips(ctx, 120, 20, p1Wins);
+    drawRoundPips(ctx, 268, 20, p2Wins);
+  }
+
+  // Keep renderHUD as an alias for backward compatibility
+  function renderHUD(ctx, player, cpu, roundTimer) {
+    drawHUD(ctx, player, cpu, roundTimer, p1Wins, p2Wins);
+  }
+
+  // ===== FIGHT SCENE =====
+  let player = null;
+  let cpu = null;
+  let roundTimer = 3600;   // 60 seconds * 60 ticks per second
+  let p1Wins = 0;
+  let p2Wins = 0;
+  let currentRound = 1;
+  let koSplashTimer = 0;   // counts down from 90 when KO occurs
+  let koTriggered = false;
+  let roundWinner = null;  // 'player' or 'cpu'
+  let matchOver = false;
+  let winner = null;
+
+  function resetRound() {
+    // Reset fighters to starting positions with full health
+    player.health = player.def.stats.health;
+    cpu.health = cpu.def.stats.health;
+    player.x = 100;
+    player.y = GROUND_Y;
+    player.vx = 0;
+    player.vy = 0;
+    cpu.x = 300;
+    cpu.y = GROUND_Y;
+    cpu.vx = 0;
+    cpu.vy = 0;
+    transitionFighterState(player, 'idle');
+    transitionFighterState(cpu, 'idle');
+    roundTimer = 3600;
+    koTriggered = false;
+    koSplashTimer = 0;
+    roundWinner = null;
+    hitStopFramesRemaining = 0;
+  }
+
+  const fightScene = {
+    enter() {
+      player = createFighter(TRUMP, 100, 1);
+      cpu = createFighter(PLACEHOLDER_CPU, 300, -1);
+      roundTimer = 3600;
+      p1Wins = 0;
+      p2Wins = 0;
+      currentRound = 1;
+      koTriggered = false;
+      koSplashTimer = 0;
+      roundWinner = null;
+      matchOver = false;
+      winner = null;
+      hitStopFramesRemaining = 0;
+      attackHeldFrames = 0;
+      prevAttack = false;
+      inputBuffer.length = 0;
+      initSpriteCache([TRUMP, PLACEHOLDER_CPU]);
+    },
+    update(input) {
+      // Match fully over: wait for Enter to go to victory scene
+      if (matchOver) {
+        if (input.enter) return 'victory';
+        return null;
+      }
+
+      // KO splash: freeze fighters, count down timer, then handle round/match end
+      if (koTriggered) {
+        if (koSplashTimer > 0) {
+          koSplashTimer--;
+          return null;
+        }
+        // Splash done: tally win
+        if (roundWinner === 'player') {
+          p1Wins++;
+        } else {
+          p2Wins++;
+        }
+        // Check for match end (best-of-3: 2 wins)
+        if (p1Wins >= 2 || p2Wins >= 2) {
+          matchOver = true;
+          winner = p1Wins >= 2 ? 'TRUMP' : 'CPU';
+          koTriggered = false;
+          return null;
+        }
+        // Start next round
+        currentRound++;
+        resetRound();
+        return null;
+      }
+
+      // Hit stop: freeze fighters, still decrement timer
+      if (hitStopFramesRemaining > 0) {
+        hitStopFramesRemaining--;
+        roundTimer = Math.max(0, roundTimer - 1);
+        return null;
+      }
+
+      // Timer countdown
+      roundTimer = Math.max(0, roundTimer - 1);
+
+      // Update player state machine
+      updateFighter(player, input, cpu);
+
+      // CPU AI input
+      const cpuInput = getCPUInput(cpu, player);
+      updateFighter(cpu, cpuInput, player);
+
+      // Push-back overlap resolution
+      resolveFighterOverlap(player, cpu);
+
+      // Hit detection (both directions -- allow trades)
+      if (checkHit(player, cpu)) resolveHit(player, cpu);
+      if (checkHit(cpu, player)) resolveHit(cpu, player);
+
+      // KO / round-end detection
+      if (player.health <= 0) {
+        koTriggered = true;
+        koSplashTimer = 90;
+        roundWinner = 'cpu';
+        return null;
+      }
+      if (cpu.health <= 0) {
+        koTriggered = true;
+        koSplashTimer = 90;
+        roundWinner = 'player';
+        return null;
+      }
+      if (roundTimer <= 0) {
+        // Time out: higher health percentage wins
+        koTriggered = true;
+        koSplashTimer = 90;
+        roundWinner = (player.health / player.def.stats.health) >= (cpu.health / cpu.def.stats.health) ? 'player' : 'cpu';
+        return null;
+      }
+
+      return null;
+    },
+    render(ctx) {
+      // Draw cached stage background
+      if (currentStage && currentStage.bgCanvas) {
+        ctx.drawImage(currentStage.bgCanvas, 0, 0);
+      }
+
+      // Draw fighters
+      if (player) renderFighter(ctx, player);
+      if (cpu) renderFighter(ctx, cpu);
+
+      // HUD overlay
+      if (player && cpu) {
+        drawHUD(ctx, player, cpu, roundTimer, p1Wins, p2Wins);
+      }
+
+      // KO splash overlay (during 90-frame countdown)
+      if (koTriggered && koSplashTimer > 0) {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(0, 85, GAME_W, 50);
+        // Flash K.O.! text between white and red every 5 frames
+        const koColor = Math.floor((90 - koSplashTimer) / 5) % 2 === 0 ? '#FFFFFF' : '#CC0000';
+        drawText(ctx, 'K.O.!', 200, 100, koColor, 16, 'center');
+      }
+
+      // Match over overlay (after KO splash, waiting for Enter)
+      if (matchOver) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(0, 80, GAME_W, 80);
+        drawText(ctx, 'K.O.!', 200, 90, '#FFFFFF', 16, 'center');
+        drawText(ctx, winner + ' WINS!', 200, 115, '#FFCC00', 8, 'center');
+
+        const showPrompt = Math.floor(frameCounter / 30) % 2 === 0;
+        if (showPrompt) {
+          drawText(ctx, 'PRESS ENTER TO CONTINUE', 200, 135, '#FFFFFF', 8, 'center');
+        }
+      }
+    }
+  };
+
+  // ===== VICTORY SCENE =====
+  const victoryScene = {
+    _frameCount: 0,
+    _winner: null,
+    enter() {
+      this._frameCount = 0;
+      this._winner = winner || 'TRUMP';
+    },
+    update(input) {
+      this._frameCount++;
+      if (input.enter && this._frameCount > 60) {
+        // Reset all match state before returning to title
+        p1Wins = 0;
+        p2Wins = 0;
+        currentRound = 1;
+        koTriggered = false;
+        koSplashTimer = 0;
+        roundWinner = null;
+        matchOver = false;
+        winner = null;
+        return 'title';
+      }
+      return null;
+    },
+    render(ctx) {
+      ctx.fillStyle = '#0A0A1A';
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+      drawText(ctx, (this._winner || 'TRUMP') + ' WINS!', 200, 100, '#FFCC00', 16, 'center');
+
+      const showPrompt = Math.floor(this._frameCount / 30) % 2 === 0;
+      if (showPrompt && this._frameCount > 60) {
+        drawText(ctx, 'PRESS ENTER TO CONTINUE', 200, 190, '#FFFFFF', 8, 'center');
+      }
+    }
+  };
+
+  const scenes = {
+    title: titleScene,
+    fight: fightScene,
+    victory: victoryScene
+  };
+
+  // ===== STAGE DEFINITIONS =====
+  const STAGES = {
+    whiteHouse: {
+      name: 'White House',
+      bounds: { left: STAGE_LEFT, right: STAGE_RIGHT },
+      groundY: GROUND_Y,
+      bgCanvas: null,
+      draw: function(octx) {
+        // --- 1. CEILING (y: 28 to 60) ---
+        octx.fillStyle = '#D4C48A';
+        octx.fillRect(0, 28, GAME_W, 32);
+        // Ceiling texture lines
+        octx.fillStyle = '#C8B87E';
+        for (let cy = 28; cy < 60; cy += 4) {
+          octx.fillRect(0, cy, GAME_W, 1);
+        }
+
+        // --- 2. WALLS (y: 60 to 192) ---
+        octx.fillStyle = '#C4A35A';
+        octx.fillRect(0, 60, GAME_W, 132);
+
+        // Wall horizontal moldings
+        octx.fillStyle = '#8B7332';
+        octx.fillRect(0, 60, GAME_W, 2);   // top molding
+        octx.fillRect(0, 186, GAME_W, 2);  // bottom wall molding
+
+        // Vertical pilasters at x=80 and x=320
+        octx.fillStyle = '#8B7332';
+        octx.fillRect(80, 60, 2, 128);
+        octx.fillRect(318, 60, 2, 128);
+
+        // Wainscoting / lower wall panel
+        octx.fillStyle = '#B8943A';
+        octx.fillRect(0, 162, GAME_W, 24);
+        octx.fillStyle = '#8B7332';
+        octx.fillRect(0, 162, GAME_W, 1);
+
+        // --- 3. PRESIDENTIAL SEAL (centered, x=180-220, y=70-108) ---
+        // Outer ring (presidential blue) - approximate circle with stacked rects
+        const sealCX = 200;
+        const sealCY = 89;
+        const sealR = 20;
+        octx.fillStyle = '#1B3A6B';
+        const sealRows = [
+          [8, 24], [12, 28], [14, 30], [16, 32],
+          [18, 34], [18, 34], [16, 32], [14, 30],
+          [12, 28], [8, 24], [4, 20]
+        ];
+        for (let i = 0; i < sealRows.length; i++) {
+          const [lw, rw] = sealRows[i];
+          octx.fillRect(sealCX - rw / 2, sealCY - 5 + i * 2, rw, 2);
+        }
+
+        // Inner gold fill - smaller oval
+        octx.fillStyle = '#C4A35A';
+        const innerRows = [
+          [6, 18], [10, 22], [12, 24], [14, 26],
+          [12, 24], [10, 22], [6, 18]
+        ];
+        for (let i = 0; i < innerRows.length; i++) {
+          const [lw, rw] = innerRows[i];
+          octx.fillRect(sealCX - rw / 2, sealCY - 3 + i * 2, rw, 2);
+        }
+
+        // Eagle silhouette (simplified - body and wing blocks)
+        octx.fillStyle = '#1B3A6B';
+        // Body
+        octx.fillRect(sealCX - 2, sealCY - 2, 4, 6);
+        // Left wing
+        octx.fillRect(sealCX - 8, sealCY, 6, 2);
+        octx.fillRect(sealCX - 10, sealCY - 2, 4, 2);
+        // Right wing
+        octx.fillRect(sealCX + 2, sealCY, 6, 2);
+        octx.fillRect(sealCX + 6, sealCY - 2, 4, 2);
+        // Head
+        octx.fillRect(sealCX - 1, sealCY - 4, 2, 2);
+        // Tail feathers
+        octx.fillRect(sealCX - 3, sealCY + 4, 6, 2);
+
+        // --- 4. WINDOWS (x: 60-100 left, x: 300-340 right, y: 78-158) ---
+        const windows = [
+          { x: 60, y: 78, w: 40, h: 80 },
+          { x: 300, y: 78, w: 40, h: 80 }
+        ];
+        for (const win of windows) {
+          // Frame (cream/white)
+          octx.fillStyle = '#E8DCC0';
+          octx.fillRect(win.x, win.y, win.w, win.h);
+
+          // Glass (sky blue)
+          octx.fillStyle = '#87CEEB';
+          octx.fillRect(win.x + 2, win.y + 2, win.w - 4, win.h - 4);
+
+          // Mullion cross (horizontal)
+          octx.fillStyle = '#E8DCC0';
+          const midY = Math.floor(win.y + win.h / 2);
+          octx.fillRect(win.x + 2, midY, win.w - 4, 1);
+          // Mullion cross (vertical)
+          const midX = Math.floor(win.x + win.w / 2);
+          octx.fillRect(midX, win.y + 2, 1, win.h - 4);
+
+          // Window top arch hint
+          octx.fillStyle = '#E8DCC0';
+          octx.fillRect(win.x + 2, win.y, win.w - 4, 4);
+        }
+
+        // --- 5. CURTAINS (flanking each window) ---
+        const curtainPairs = [
+          { x: 52, w: 8 }, { x: 100, w: 8 },  // Left window curtains
+          { x: 292, w: 8 }, { x: 340, w: 8 }   // Right window curtains
+        ];
+        for (const c of curtainPairs) {
+          octx.fillStyle = '#B8860B';
+          octx.fillRect(c.x, 70, c.w, 118);
+          // Fabric fold lines
+          octx.fillStyle = '#8B6914';
+          for (let fx = c.x; fx < c.x + c.w; fx += 2) {
+            octx.fillRect(fx, 70, 1, 118);
+          }
+          // Curtain top rod
+          octx.fillStyle = '#8B7332';
+          octx.fillRect(c.x - 1, 70, c.w + 2, 3);
+        }
+
+        // --- 6. AMERICAN FLAGS ---
+        const flags = [
+          { poleX: 140, poleTopY: 78 },
+          { poleX: 260, poleTopY: 78 }
+        ];
+        for (const flag of flags) {
+          // Pole
+          octx.fillStyle = '#8B7332';
+          octx.fillRect(flag.poleX, flag.poleTopY, 1, 82);
+
+          // Pole finial (gold ball)
+          octx.fillStyle = '#FFD700';
+          octx.fillRect(flag.poleX - 1, flag.poleTopY - 3, 3, 3);
+
+          // Flag body (12 wide x 9 tall)
+          const fx = flag.poleX + 1;
+          const fy = flag.poleTopY;
+          // Red and white stripes (1px each, 9 total stripes)
+          const stripeColors = ['#CC0000','#FFFFFF','#CC0000','#FFFFFF','#CC0000','#FFFFFF','#CC0000','#FFFFFF','#CC0000'];
+          for (let s = 0; s < stripeColors.length; s++) {
+            octx.fillStyle = stripeColors[s];
+            octx.fillRect(fx, fy + s, 12, 1);
+          }
+          // Blue canton (top-left, 5x4px)
+          octx.fillStyle = '#003399';
+          octx.fillRect(fx, fy, 5, 4);
+          // Stars (white dots in canton)
+          octx.fillStyle = '#FFFFFF';
+          octx.fillRect(fx + 1, fy + 1, 1, 1);
+          octx.fillRect(fx + 3, fy + 1, 1, 1);
+          octx.fillRect(fx + 1, fy + 3, 1, 1);
+          octx.fillRect(fx + 3, fy + 3, 1, 1);
+        }
+
+        // --- 7. RESOLUTE DESK (centered, x: 155-245, y: 148-186) ---
+        // Desk body
+        octx.fillStyle = '#5C3D1A';
+        octx.fillRect(155, 153, 90, 33);
+
+        // Desk top edge highlight
+        octx.fillStyle = '#7A5228';
+        octx.fillRect(155, 153, 90, 2);
+
+        // Desk front panel detail (recessed rectangle)
+        octx.fillStyle = '#4D3010';
+        octx.fillRect(175, 160, 50, 16);
+        octx.fillStyle = '#3E2608';
+        octx.fillRect(177, 162, 46, 12);
+
+        // Presidential name plate on desk
+        octx.fillStyle = '#C4A35A';
+        octx.fillRect(188, 155, 24, 4);
+
+        // Desk side panels
+        octx.fillStyle = '#4D3010';
+        octx.fillRect(155, 153, 8, 33);  // Left side
+        octx.fillRect(237, 153, 8, 33);  // Right side
+
+        // Desk items (papers, pen holder - small details)
+        octx.fillStyle = '#FFFFFF';
+        octx.fillRect(162, 152, 12, 1);  // Papers
+        octx.fillRect(176, 152, 8, 1);
+
+        octx.fillStyle = '#1B3A6B';
+        octx.fillRect(225, 150, 2, 6);  // Pen/flag stand
+
+        // --- 8. FLOOR (dark wood, y: 192 to 240) ---
+        octx.fillStyle = '#3B2507';
+        octx.fillRect(0, 192, GAME_W, 48);
+
+        // Floor grain lines (horizontal, every 8px)
+        octx.fillStyle = '#4D3010';
+        for (let gy = 192; gy < 240; gy += 8) {
+          octx.fillRect(0, gy, GAME_W, 1);
+        }
+
+        // Floor plank lines (vertical, every 32px)
+        octx.fillStyle = '#321E05';
+        for (let gx = 0; gx < GAME_W; gx += 32) {
+          octx.fillRect(gx, 192, 1, 48);
+        }
+
+        // --- 9. OVAL RUG (centered, approximate oval) ---
+        // Gold border first (slightly wider oval)
+        const rugCX = 200;
+        const rugCY = 218;
+        const rugBorderRows = [
+          [8,  10],  // very top
+          [24, 28],
+          [36, 40],
+          [48, 54],
+          [58, 64],
+          [68, 74],  // widest
+          [68, 74],
+          [58, 64],
+          [48, 54],
+          [36, 40],
+          [24, 28],
+          [8,  10],  // very bottom
+        ];
+
+        octx.fillStyle = '#C4A35A'; // Gold border
+        for (let i = 0; i < rugBorderRows.length; i++) {
+          const [lw, rw] = rugBorderRows[i];
+          octx.fillRect(rugCX - rw / 2, rugCY - 11 + i * 2, rw, 2);
+        }
+
+        // Blue rug (slightly smaller oval inside gold)
+        const rugRows = [
+          [4,  6],
+          [20, 24],
+          [32, 36],
+          [44, 50],
+          [54, 60],
+          [62, 68],  // widest
+          [62, 68],
+          [54, 60],
+          [44, 50],
+          [32, 36],
+          [20, 24],
+          [4,  6],
+        ];
+
+        octx.fillStyle = '#1B3A6B'; // Presidential blue
+        for (let i = 0; i < rugRows.length; i++) {
+          const [lw, rw] = rugRows[i];
+          octx.fillRect(rugCX - rw / 2, rugCY - 11 + i * 2, rw, 2);
+        }
+
+        // Rug inner pattern - eagle seal hint
+        octx.fillStyle = '#2A4E8B';
+        octx.fillRect(rugCX - 10, rugCY - 3, 20, 6);
+
+        // Rug decorative border inner line
+        octx.fillStyle = '#C4A35A';
+        octx.fillRect(rugCX - 24, rugCY - 1, 48, 1);
+
+        // --- 10. WALL/FLOOR MOLDING TRIM ---
+        octx.fillStyle = '#8B7332';
+        octx.fillRect(0, 190, GAME_W, 2);
+
+        // Baseboard (lighter strip)
+        octx.fillStyle = '#A08040';
+        octx.fillRect(0, 192, GAME_W, 2);
+      }
+    }
+  };
+
+  // ===== STAGE INIT =====
+  let currentStage = null;
+
+  function initStage(stageDef) {
+    const oc = document.createElement('canvas');
+    oc.width = GAME_W;
+    oc.height = GAME_H;
+    const octx = oc.getContext('2d');
+    octx.imageSmoothingEnabled = false;
+    stageDef.draw(octx);
+    stageDef.bgCanvas = oc;
+    currentStage = stageDef;
+  }
+
+  // ===== INIT SEQUENCE =====
+  window.addEventListener('load', () => {
+    resizeCanvas();
+    buildLogo();
+    initStage(STAGES.whiteHouse);
+    // Sprite cache initialized in fightScene.enter() when fighters are created
+    scenes[currentScene].enter();
+    requestAnimationFrame(gameLoop);
+  });
+
+  </script>
+</body>
+</html>

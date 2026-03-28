@@ -7,12 +7,12 @@
 
 ### Engine
 
-- [ ] **ENG-01**: Game runs in any modern browser opened directly from the local filesystem (file://) with no server, no CDN, no external files
-- [ ] **ENG-02**: Game loop runs at 60fps using a fixed-timestep accumulator (requestAnimationFrame + 1/60s tick) so physics and combat timing are frame-rate independent
-- [ ] **ENG-03**: All graphics rendered via Canvas 2D API using integer pixel coordinates with antialiasing disabled and CSS `image-rendering: pixelated` applied
-- [ ] **ENG-04**: All sprite frames pre-rendered to offscreen canvases at initialization and blitted with drawImage() each frame (no per-frame fillRect sprite drawing)
-- [ ] **ENG-05**: Input system tracks keydown/keyup state map for all bound keys with a 6-frame input buffer per player for combo detection
-- [ ] **ENG-06**: Scene manager handles transitions: Title → CharSelect → StageSelect → Fight → Victory, with round splash overlay during fights
+- [x] **ENG-01**: Game runs in any modern browser opened directly from the local filesystem (file://) with no server, no CDN, no external files *(01-01)*
+- [x] **ENG-02**: Game loop runs at 60fps using a fixed-timestep accumulator (requestAnimationFrame + 1/60s tick) so physics and combat timing are frame-rate independent *(01-01)*
+- [x] **ENG-03**: All graphics rendered via Canvas 2D API using integer pixel coordinates with antialiasing disabled and CSS `image-rendering: pixelated` applied *(01-01)*
+- [x] **ENG-04**: All sprite frames pre-rendered to offscreen canvases at initialization and blitted with drawImage() each frame (no per-frame fillRect sprite drawing) *(01-01)*
+- [x] **ENG-05**: Input system tracks keydown/keyup state map for all bound keys with a 6-frame input buffer per player for combo detection *(01-01)*
+- [x] **ENG-06**: Scene manager handles transitions: Title → CharSelect → StageSelect → Fight → Victory, with round splash overlay during fights *(01-01)*
 
 ### Fighters
 
@@ -39,7 +39,7 @@
 
 ### Stages
 
-- [ ] **STG-01**: The White House — Oval Office interior with presidential décor; pixel art background rendered in canvas code
+- [x] **STG-01**: The White House — Oval Office interior with presidential décor; pixel art background rendered in canvas code *(01-01)*
 - [ ] **STG-02**: Greek Island — Cliffside arena with white-and-blue architecture and sea backdrop
 - [ ] **STG-03**: Mar-a-Lago Club — Lavish ballroom with gilded décor
 - [ ] **STG-04**: Golf Course — Open fairway with clubhouse backdrop
@@ -48,7 +48,7 @@
 
 ### Game Flow
 
-- [ ] **FLW-01**: Title screen with pixel art "POLIPUNCH" logo, fighter silhouette animation, and "PRESS ENTER TO START" prompt
+- [x] **FLW-01**: Title screen with pixel art "HEART OF STEEL" logo, and "PRESS ENTER TO START" prompt *(01-01)*
 - [ ] **FLW-02**: Character select screen showing all 5 fighters with pixel art portraits, player selects fighter, CPU randomly selects (no same-fighter mirror matches)
 - [ ] **FLW-03**: Stage select screen showing all 4 stages with preview thumbnails
 - [ ] **FLW-04**: Fight screen shows HUD: player health bar (left), CPU health bar (right), round counter (center top), countdown timer (60 seconds per round), ultimate meters (below health bars) — styled like a 90s arcade cabinet with pixelated font

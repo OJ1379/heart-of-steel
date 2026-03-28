@@ -51,7 +51,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01-PLAN.md -- Biden fighter definition, portrait system, character select screen, scene flow rewiring (Title->CharSelect->Fight->Victory)
+- [x] 02-01-PLAN.md -- Biden fighter definition, portrait system, character select screen, scene flow rewiring (Title->CharSelect->Fight->Victory)
 - [ ] 02-02-PLAN.md -- AI state machine with difficulty scaling, round splash screens, best-of-3 verification, full gameplay checkpoint
 
 ### Phase 3: Full Roster + Stages

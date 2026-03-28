@@ -20,7 +20,7 @@
 - [ ] **FTR-02**: Each fighter has animated states: idle, walk forward, walk back, jump (rise/fall), crouch, fast attack, power attack, block, hit-stun, knockdown, ultimate, and victory pose
 - [ ] **FTR-03**: Fighter data is fully data-driven — stats, frame data, hitboxes, and draw functions live in a character definition object; adding a fighter requires no engine code changes
 - [ ] **FTR-04**: Trump — brash brawler archetype: wider power swings, slower walk speed, highest power stat; "Art of the Deal" ultimate spawns a golden wall that sweeps the screen multi-hitting the opponent
-- [ ] **FTR-05**: Biden — tanky grappler archetype: highest health, longest reach, slow speed; "Ice Cream Avalanche" ultimate summons a wave of ice cream cones that freezes the opponent on hit
+- [x] **FTR-05**: Biden — tanky grappler archetype: highest health, longest reach, slow speed; "Ice Cream Avalanche" ultimate summons a wave of ice cream cones that freezes the opponent on hit
 - [ ] **FTR-06**: Obama — balanced technical archetype: highest combo count, smooth attack animations, mid-range stats; "Drone Commander" ultimate shows targeting reticle locking on opponent then rains missiles
 - [ ] **FTR-07**: Bush — unorthodox scrappy archetype: random-feeling timing variations, mid stats; "Now Watch This Drive" ultimate launches a flaming golf ball that ricochets around the stage hitting multiple times
 - [ ] **FTR-08**: Clinton — evasive counter-fighter archetype: fastest walk speed, lowest health, best dodge frames; "Executive Charm" ultimate plays saxophone animation that stuns opponent then delivers a combo finisher
@@ -49,12 +49,12 @@
 ### Game Flow
 
 - [x] **FLW-01**: Title screen with pixel art "HEART OF STEEL" logo, and "PRESS ENTER TO START" prompt *(01-01)*
-- [ ] **FLW-02**: Character select screen showing all 5 fighters with pixel art portraits, player selects fighter, CPU randomly selects (no same-fighter mirror matches)
+- [x] **FLW-02**: Character select screen showing all 5 fighters with pixel art portraits, player selects fighter, CPU randomly selects (no same-fighter mirror matches)
 - [ ] **FLW-03**: Stage select screen showing all 4 stages with preview thumbnails
 - [ ] **FLW-04**: Fight screen shows HUD: player health bar (left), CPU health bar (right), round counter (center top), countdown timer (60 seconds per round), ultimate meters (below health bars) — styled like a 90s arcade cabinet with pixelated font
 - [ ] **FLW-05**: Round splash screens: "ROUND [N]" banner, then "FIGHT!" banner at round start; "K.O." splash on knockout; round win indicator updates on HUD
 - [ ] **FLW-06**: Best-of-3 rounds per match; player/CPU who wins 2 rounds first wins the match
-- [ ] **FLW-07**: Victory screen shows winner with victory pose animation, loser slumped, "WINNER!" text, and "PRESS ENTER to play again" prompt
+- [x] **FLW-07**: Victory screen shows winner with victory pose animation, loser slumped, "WINNER!" text, and "PRESS ENTER to play again" prompt
 
 ### AI
 
@@ -115,7 +115,7 @@
 | FTR-02 | Phase 1 | Pending |
 | FTR-03 | Phase 1 | Pending |
 | FTR-04 | Phase 1 | Pending |
-| FTR-05 | Phase 2 | Pending |
+| FTR-05 | Phase 2 | Complete |
 | FTR-06 | Phase 3 | Pending |
 | FTR-07 | Phase 3 | Pending |
 | FTR-08 | Phase 3 | Pending |
@@ -135,12 +135,12 @@
 | STG-05 | Phase 4 | Pending |
 | STG-06 | Phase 4 | Pending |
 | FLW-01 | Phase 1 | Pending |
-| FLW-02 | Phase 2 | Pending |
+| FLW-02 | Phase 2 | Complete |
 | FLW-03 | Phase 2 | Pending |
 | FLW-04 | Phase 1 | Pending |
 | FLW-05 | Phase 2 | Pending |
 | FLW-06 | Phase 2 | Pending |
-| FLW-07 | Phase 2 | Pending |
+| FLW-07 | Phase 2 | Complete |
 | AI-01 | Phase 2 | Pending |
 | AI-02 | Phase 2 | Pending |
 | AI-03 | Phase 2 | Pending |

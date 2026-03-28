@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-03-28T10:45:14.248Z"
-last_activity: 2026-03-28
+status: executing
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-29T00:36:21Z"
+last_activity: 2026-03-29 -- Phase 02 complete (all plans done)
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 5
   completed_plans: 5
   percent: 100
@@ -25,32 +25,32 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 
 ## Current Position
 
-Phase: 2
-Plan: 1 of 2 complete
-Status: Plan 02-01 complete (Biden fighter + character select). Plan 02-02 next (AI + round splash).
-Last activity: 2026-03-28
+Phase: 02 (ai-game-flow-architecture-validation) — COMPLETE
+Plan: 2 of 2
+Status: Phase 02 complete
+Last activity: 2026-03-29 -- Phase 02 complete (all plans done)
 
-Progress: [████████░░] 80% (4 of 5 plans complete)
+Progress: [██████████] 100% (5 of 5 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 4
-- Average duration: ~37 min
-- Total execution time: ~2.2 hours
+- Total plans completed: 5
+- Average duration: ~32 min
+- Total execution time: ~2.7 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-engine-core-combat | 3/3 | 140 min | 47 min |
-| 02-ai-game-flow | 1/2 | 7 min | 7 min |
+| 02-ai-game-flow | 2/2 | 22 min | 11 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 01-01 (35 min), 01-02 (65 min), 01-03 (40 min), 02-01 (7 min)
-- Trend: Data-driven architecture paying off -- Biden + char select in 7 min vs 65 min for Trump + engine
+- Last 5 plans: 01-01 (35 min), 01-02 (65 min), 01-03 (40 min), 02-01 (7 min), 02-02 (15 min)
+- Trend: Data-driven architecture paying off -- AI + round splashes in 15 min, Biden + char select in 7 min
 
 *Updated after each plan completion*
 
@@ -79,6 +79,10 @@ Recent decisions affecting current work:
 - [02-01]: selectedStage (not currentStage) used for stage selection string to avoid collision with stage object var
 - [02-01]: Portrait cache system (initPortraitCache) renders 40x48 bust views per fighter
 - [02-01]: stageSelectScene is pass-through only; FLW-03 full stage select UI deferred to Phase 3
+- [02-02]: AI generates synthetic input through same updateFighter pipeline as human player -- no special AI branches
+- [02-02]: AI combo simulation: 2-frame hold + 1-frame release cycle for fast attacks; 14-frame hold for power attacks
+- [02-02]: Round splash is 90 frames (60 ROUND N + 30 FIGHT!) gating all game updates as first check in fightScene.update
+- [02-02]: AI-04 combo behavior implemented; ultimate ability usage deferred to Phase 4 (CMB-08 prerequisite)
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-28T10:44:17Z
-Stopped at: Completed 02-01-PLAN.md
-Resume file: .planning/phases/02-ai-game-flow-architecture-validation/02-02-PLAN.md
+Last session: 2026-03-29T00:36:21Z
+Stopped at: Completed 02-02-PLAN.md (Phase 02 complete)
+Resume file: .planning/phases/03-full-roster-stages/03-01-PLAN.md

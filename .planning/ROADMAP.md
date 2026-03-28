@@ -52,7 +52,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md -- Biden fighter definition, portrait system, character select screen, scene flow rewiring (Title->CharSelect->Fight->Victory)
-- [ ] 02-02-PLAN.md -- AI state machine with difficulty scaling, round splash screens, best-of-3 verification, full gameplay checkpoint
+- [x] 02-02-PLAN.md -- AI state machine with difficulty scaling, round splash screens, best-of-3 verification, full gameplay checkpoint
 
 ### Phase 3: Full Roster + Stages
 **Goal**: All 5 fighters and all 4 stages are complete -- the player has the full content roster to choose from
@@ -94,6 +94,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Engine + Core Combat | 3/3 | Complete | 2026-03-28 |
-| 2. AI, Game Flow + Architecture Validation | 0/2 | Planned | - |
+| 2. AI, Game Flow + Architecture Validation | 2/2 | Complete | 2026-03-29 |
 | 3. Full Roster + Stages | 0/2 | Not started | - |
 | 4. Ultimates, Wall Breaks + Audio | 0/3 | Not started | - |

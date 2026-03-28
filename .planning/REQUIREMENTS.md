@@ -52,17 +52,17 @@
 - [x] **FLW-02**: Character select screen showing all 5 fighters with pixel art portraits, player selects fighter, CPU randomly selects (no same-fighter mirror matches)
 - [ ] **FLW-03**: Stage select screen showing all 4 stages with preview thumbnails
 - [ ] **FLW-04**: Fight screen shows HUD: player health bar (left), CPU health bar (right), round counter (center top), countdown timer (60 seconds per round), ultimate meters (below health bars) — styled like a 90s arcade cabinet with pixelated font
-- [ ] **FLW-05**: Round splash screens: "ROUND [N]" banner, then "FIGHT!" banner at round start; "K.O." splash on knockout; round win indicator updates on HUD
-- [ ] **FLW-06**: Best-of-3 rounds per match; player/CPU who wins 2 rounds first wins the match
+- [x] **FLW-05**: Round splash screens: "ROUND [N]" banner, then "FIGHT!" banner at round start; "K.O." splash on knockout; round win indicator updates on HUD *(02-02)*
+- [x] **FLW-06**: Best-of-3 rounds per match; player/CPU who wins 2 rounds first wins the match *(02-02)*
 - [x] **FLW-07**: Victory screen shows winner with victory pose animation, loser slumped, "WINNER!" text, and "PRESS ENTER to play again" prompt
 
 ### AI
 
-- [ ] **AI-01**: CPU AI selects difficulty at character select screen: Easy / Medium / Hard
-- [ ] **AI-02**: AI uses a state machine (approach, pressure, back-off, punish) with reaction delay: Easy = 250ms, Medium = 150ms, Hard = 65ms
-- [ ] **AI-03**: AI blocks incoming attacks with probability: Easy = 20%, Medium = 50%, Hard = 80%
-- [ ] **AI-04**: AI attempts combos (fast attack chains) and uses ultimate ability when meter is full
-- [ ] **AI-05**: AI uses movement — walks forward when far, backs off when blocking, jumps occasionally
+- [x] **AI-01**: CPU AI selects difficulty at character select screen: Easy / Medium / Hard *(02-02)*
+- [x] **AI-02**: AI uses a state machine (approach, pressure, back-off, punish) with reaction delay: Easy = 250ms, Medium = 150ms, Hard = 65ms *(02-02)*
+- [x] **AI-03**: AI blocks incoming attacks with probability: Easy = 20%, Medium = 50%, Hard = 80% *(02-02)*
+- [x] **AI-04**: AI attempts combos (fast attack chains) and uses ultimate ability when meter is full *(02-02, partial: combos done, ultimate deferred to Phase 4/CMB-08)*
+- [x] **AI-05**: AI uses movement — walks forward when far, backs off when blocking, jumps occasionally *(02-02)*
 
 ### Audio
 

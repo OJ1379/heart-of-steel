@@ -696,14 +696,19 @@
     }
   };
 
-  // --- PLACEHOLDER CPU SPRITE (gray palette recolor of Trump silhouette) ---
-  function drawCPUBase(c, offsetY, crouchFactor, armState, legState) {
+  // --- BIDEN SPRITE FUNCTIONS ---
+  // Canvas is 64x56. Anchor: feet at y=56, center at x=32.
+  // Biden: slightly taller (standH=50), wider torso (26px), silver hair, blue tie, aviator sunglasses
+
+  function drawBidenBase(c, offsetY, crouchFactor, armState, legState) {
+    // armState: 0=sides, 1=up, 2=guard, 3=punch, 4=windup, 5=swing, 6=recoil
+    // legState: 0=stand, 1=stride-a, 2=stride-b, 3=jump-tuck, 4=land, 5=crouch
     const oy = offsetY || 0;
     const cf = crouchFactor || 0;
 
     const bodyBot = 56;
-    const standH = 48;
-    const crouchH = 30;
+    const standH = 50;   // 2px taller than Trump (48)
+    const crouchH = 32;  // 2px taller than Trump (30)
     const bodyH = Math.floor(standH - (standH - crouchH) * cf);
     const bodyTop = bodyBot - bodyH + oy;
 
@@ -715,239 +720,399 @@
     const torsoTop = headTop + headH;
     const legTop = torsoTop + torsoH;
 
-    // Gray CPU palette
-    const pri = '#666666';
-    const sec = '#888888';
-    const dark = '#444444';
-    const outline = '#333333';
-    const shoe = '#222222';
+    // Biden color palette
+    const hairPri = '#CCCCCC';
+    const hairSec = '#999999';
+    const skinPri = '#F5D0B0';
+    const skinSec = '#D4AD85';
+    const suitPri = '#1A1A3A';
+    const suitSec = '#0D0D20';
+    const shirt = '#FFFFFF';
+    const tiePri = '#1A4A8A';
+    const tieSec = '#0D2D5A';
+    const shoe = '#1A1A1A';
+    const outline = '#000000';
 
-    // Outline
-    c.fillStyle = outline;
-
-    // Legs
+    // === SHOES / LEGS ===
     if (legState === 0) {
-      c.fillStyle = pri;
-      c.fillRect(22, legTop, 8, legH - 4);
-      c.fillRect(34, legTop, 8, legH - 4);
+      c.fillStyle = suitPri;
+      c.fillRect(21, legTop, 8, legH - 4);
+      c.fillRect(33, legTop, 8, legH - 4);
       c.fillStyle = shoe;
-      c.fillRect(20, legTop + legH - 4, 10, 4);
-      c.fillRect(34, legTop + legH - 4, 10, 4);
+      c.fillRect(19, legTop + legH - 4, 10, 4);
+      c.fillRect(33, legTop + legH - 4, 10, 4);
     } else if (legState === 1) {
-      c.fillStyle = pri;
-      c.fillRect(19, legTop, 8, legH - 4);
-      c.fillRect(36, legTop + 2, 8, legH - 6);
+      c.fillStyle = suitPri;
+      c.fillRect(18, legTop, 8, legH - 4);
+      c.fillRect(35, legTop + 2, 8, legH - 6);
       c.fillStyle = shoe;
-      c.fillRect(17, legTop + legH - 4, 10, 4);
-      c.fillRect(34, legTop + legH - 6, 10, 4);
+      c.fillRect(16, legTop + legH - 4, 10, 4);
+      c.fillRect(33, legTop + legH - 6, 10, 4);
     } else if (legState === 2) {
-      c.fillStyle = pri;
-      c.fillRect(21, legTop + 2, 8, legH - 6);
-      c.fillRect(34, legTop, 8, legH - 4);
+      c.fillStyle = suitPri;
+      c.fillRect(20, legTop + 2, 8, legH - 6);
+      c.fillRect(33, legTop, 8, legH - 4);
       c.fillStyle = shoe;
-      c.fillRect(19, legTop + legH - 6, 10, 4);
-      c.fillRect(32, legTop + legH - 4, 10, 4);
+      c.fillRect(18, legTop + legH - 6, 10, 4);
+      c.fillRect(31, legTop + legH - 4, 10, 4);
+    } else if (legState === 3) {
+      const tuck = Math.floor(legH * 0.4);
+      c.fillStyle = suitPri;
+      c.fillRect(19, legTop + tuck, 9, legH - tuck - 2);
+      c.fillRect(33, legTop + tuck, 9, legH - tuck - 2);
+      c.fillStyle = shoe;
+      c.fillRect(18, legTop + legH - 2, 10, 3);
+      c.fillRect(33, legTop + legH - 2, 10, 3);
+    } else if (legState === 4) {
+      c.fillStyle = suitPri;
+      c.fillRect(17, legTop, 9, legH - 4);
+      c.fillRect(35, legTop, 9, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(15, legTop + legH - 4, 11, 4);
+      c.fillRect(33, legTop + legH - 4, 11, 4);
     } else if (legState === 5) {
-      c.fillStyle = pri;
-      c.fillRect(22, legTop, 8, legH - 2);
-      c.fillRect(34, legTop, 8, legH - 2);
+      c.fillStyle = suitPri;
+      c.fillRect(21, legTop, 8, legH - 2);
+      c.fillRect(33, legTop, 8, legH - 2);
       c.fillStyle = shoe;
-      c.fillRect(20, legTop + legH - 2, 10, 3);
-      c.fillRect(34, legTop + legH - 2, 10, 3);
-    } else {
-      c.fillStyle = pri;
-      c.fillRect(22, legTop, 8, legH - 4);
-      c.fillRect(34, legTop, 8, legH - 4);
-      c.fillStyle = shoe;
-      c.fillRect(20, legTop + legH - 4, 10, 4);
-      c.fillRect(34, legTop + legH - 4, 10, 4);
+      c.fillRect(19, legTop + legH - 2, 10, 3);
+      c.fillRect(33, legTop + legH - 2, 10, 3);
     }
 
-    // Torso
-    c.fillStyle = pri;
-    c.fillRect(20, torsoTop, 24, torsoH);
-    c.fillStyle = dark;
-    c.fillRect(20, torsoTop, 4, torsoH);
-    c.fillRect(40, torsoTop, 4, torsoH);
-    c.fillStyle = sec;
+    // === TORSO (suit) === (26px wide, vs Trump's 24)
+    c.fillStyle = suitPri;
+    c.fillRect(19, torsoTop, 26, torsoH);
+    // Suit lapels (darker)
+    c.fillStyle = suitSec;
+    c.fillRect(19, torsoTop, 4, torsoH);
+    c.fillRect(41, torsoTop, 4, torsoH);
+    // Shirt/tie visible in center
+    c.fillStyle = shirt;
     c.fillRect(28, torsoTop, 8, 4);
+    // Tie (blue)
+    c.fillStyle = tiePri;
+    c.fillRect(30, torsoTop + 3, 4, Math.floor(torsoH * 0.6));
+    c.fillStyle = tieSec;
+    c.fillRect(31, torsoTop + 3, 2, Math.floor(torsoH * 0.6));
 
-    // Arms
+    // === ARMS ===
     if (armState === 0) {
-      c.fillStyle = pri;
-      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);
-      c.fillRect(44, torsoTop + 2, 6, torsoH - 4);
-      c.fillStyle = sec;
-      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);
-      c.fillRect(44, torsoTop + torsoH - 6, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(13, torsoTop + 2, 6, torsoH - 4);
+      c.fillRect(45, torsoTop + 2, 6, torsoH - 4);
+      c.fillStyle = skinPri;
+      c.fillRect(13, torsoTop + torsoH - 6, 6, 6);
+      c.fillRect(45, torsoTop + torsoH - 6, 6, 6);
+    } else if (armState === 1) {
+      c.fillStyle = suitPri;
+      c.fillRect(11, torsoTop - 6, 6, torsoH - 2);
+      c.fillRect(47, torsoTop - 6, 6, torsoH - 2);
+      c.fillStyle = skinPri;
+      c.fillRect(11, torsoTop - 10, 6, 6);
+      c.fillRect(47, torsoTop - 10, 6, 6);
     } else if (armState === 2) {
-      c.fillStyle = pri;
-      c.fillRect(16, torsoTop + 2, 8, 6);
-      c.fillRect(40, torsoTop + 2, 8, 6);
-      c.fillStyle = sec;
-      c.fillRect(24, torsoTop + 2, 8, 6);
-      c.fillRect(32, torsoTop + 2, 8, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(15, torsoTop + 2, 8, 6);
+      c.fillRect(41, torsoTop + 2, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(23, torsoTop + 2, 8, 6);
+      c.fillRect(33, torsoTop + 2, 8, 6);
+    } else if (armState === 3) {
+      c.fillStyle = suitPri;
+      c.fillRect(13, torsoTop + 2, 6, torsoH - 6);
+      c.fillStyle = skinPri;
+      c.fillRect(13, torsoTop + torsoH - 8, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(45, torsoTop + 4, 14, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(57, torsoTop + 4, 7, 6);
+    } else if (armState === 4) {
+      c.fillStyle = suitPri;
+      c.fillRect(9, torsoTop - 4, 6, torsoH);
+      c.fillRect(9, torsoTop, 12, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(9, torsoTop - 8, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(45, torsoTop - 2, 6, torsoH - 2);
+      c.fillStyle = skinPri;
+      c.fillRect(45, torsoTop - 6, 6, 6);
+    } else if (armState === 5) {
+      c.fillStyle = suitPri;
+      c.fillRect(13, torsoTop + 2, 6, torsoH - 4);
+      c.fillStyle = skinPri;
+      c.fillRect(13, torsoTop + torsoH - 6, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(45, torsoTop, 16, 7);
+      c.fillRect(57, torsoTop + 6, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(59, torsoTop + 10, 8, 6);
     } else if (armState === 6) {
-      c.fillStyle = pri;
-      c.fillRect(8, torsoTop, 8, 6);
-      c.fillRect(48, torsoTop, 8, 6);
-      c.fillStyle = sec;
-      c.fillRect(6, torsoTop, 6, 6);
-      c.fillRect(50, torsoTop, 6, 6);
-    } else {
-      c.fillStyle = pri;
-      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);
-      c.fillRect(44, torsoTop + 2, 6, torsoH - 4);
-      c.fillStyle = sec;
-      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);
-      c.fillRect(44, torsoTop + torsoH - 6, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(7, torsoTop, 8, 6);
+      c.fillRect(49, torsoTop, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(5, torsoTop, 6, 6);
+      c.fillRect(51, torsoTop, 6, 6);
     }
 
-    // Head
+    // === HEAD ===
     const headCX = 32;
     const headW = 18;
     c.fillStyle = outline;
     c.fillRect(headCX - headW/2 - 1, headTop - 1, headW + 2, headH + 2);
-    c.fillStyle = sec;
+
+    c.fillStyle = skinPri;
     c.fillRect(headCX - headW/2, headTop, headW, headH);
-    c.fillStyle = dark;
+    c.fillStyle = skinSec;
     c.fillRect(headCX + 2, headTop, headW/2 - 1, headH);
 
-    // "Hair" (darker area)
-    c.fillStyle = dark;
+    // HAIR: silver-white, receding
+    c.fillStyle = hairPri;
     c.fillRect(headCX - headW/2, headTop - 3, headW, 5);
+    c.fillRect(headCX - headW/2 - 1, headTop - 1, 3, 3);
+    c.fillRect(headCX + headW/2 - 2, headTop - 2, 4, 3);
+    c.fillStyle = hairSec;
+    c.fillRect(headCX - headW/2, headTop - 3, headW, 2);
+    c.fillRect(headCX + 2, headTop - 2, 6, 2);
 
-    // Eyes
-    c.fillStyle = '#CCCCCC';
-    c.fillRect(headCX - 6, headTop + 4, 4, 3);
-    c.fillRect(headCX + 2, headTop + 4, 4, 3);
-    c.fillStyle = '#000000';
-    c.fillRect(headCX - 5, headTop + 5, 2, 2);
-    c.fillRect(headCX + 3, headTop + 5, 2, 2);
+    // AVIATOR SUNGLASSES (signature Biden look) -- dark rectangle across eye area
+    c.fillStyle = '#111111';
+    c.fillRect(headCX - 7, headTop + 4, 14, 3);
+    // Slight highlight on top edge
+    c.fillStyle = '#333333';
+    c.fillRect(headCX - 7, headTop + 4, 14, 1);
+
+    // Nose
+    c.fillStyle = skinSec;
+    c.fillRect(headCX - 1, headTop + 7, 3, 3);
+
+    // Mouth (slight smile)
+    c.fillStyle = '#CC7744';
+    c.fillRect(headCX - 4, headTop + headH - 5, 8, 2);
   }
 
-  function makeCPUFrames(armState, legState, offsetY, crouchFactor) {
+  // Biden sprite state generators
+  function makeBidenFrames(armState, legState, offsetY, crouchFactor) {
     return function(c) {
-      drawCPUBase(c, offsetY || 0, crouchFactor || 0, armState, legState);
+      drawBidenBase(c, offsetY || 0, crouchFactor || 0, armState, legState);
     };
   }
 
-  const PLACEHOLDER_CPU = {
-    name: 'CPU',
+  // BIDEN definition object (tanky grappler archetype)
+  const BIDEN = {
+    name: 'Biden',
     spriteWidth: 64,
     spriteHeight: 56,
     stats: {
-      walkSpeed: 0.9,          // ~50% of Trump
+      walkSpeed: 1.2,
       jumpForce: -7.5,
       gravity: 0.45,
-      health: 1000,
+      health: 1200,
       power: 1.0,
-      reach: 1.0,
-      hurtboxWidth: 36,
-      hurtboxHeight: 48,
-      crouchHurtboxHeight: 30
+      reach: 1.3,
+      hurtboxWidth: 40,
+      hurtboxHeight: 50,
+      crouchHurtboxHeight: 32
     },
     attacks: {
       fast: {
-        startup: 4, active: 4, recovery: 8,
-        damage: 60, maxChain: 4,
-        hitbox: { x: 20, y: -20, w: 30, h: 16 },
-        hitstun: 12
+        startup: 5, active: 4, recovery: 9,
+        damage: 50, maxChain: 3,
+        hitbox: { x: 22, y: -22, w: 34, h: 18 },
+        hitstun: 14
       },
       power: {
-        startup: 12, active: 5, recovery: 18,
-        damage: 150, maxChain: 1,
-        hitbox: { x: 16, y: -28, w: 40, h: 24 },
-        hitstun: 24
+        startup: 14, active: 6, recovery: 20,
+        damage: 170, maxChain: 1,
+        hitbox: { x: 18, y: -30, w: 46, h: 26 },
+        hitstun: 28
       }
     },
     sprites: {
       idle: [
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, -1, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 1, 0)
+        makeBidenFrames(0, 0, 0, 0),
+        makeBidenFrames(0, 0, -1, 0),
+        makeBidenFrames(0, 0, 0, 0),
+        makeBidenFrames(0, 0, 1, 0)
       ],
       walkForward: [
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 1, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 2, 0, 0)
+        makeBidenFrames(0, 0, 0, 0),
+        makeBidenFrames(0, 1, 0, 0),
+        makeBidenFrames(0, 0, 0, 0),
+        makeBidenFrames(0, 2, 0, 0)
       ],
       walkBack: [
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 2, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 1, 0, 0)
+        makeBidenFrames(0, 0, 0, 0),
+        makeBidenFrames(0, 2, 0, 0),
+        makeBidenFrames(0, 0, 0, 0),
+        makeBidenFrames(0, 1, 0, 0)
       ],
       jumpRise: [
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0)
+        makeBidenFrames(1, 0, 0, 0),
+        makeBidenFrames(1, 3, -1, 0),
+        makeBidenFrames(1, 3, -2, 0),
+        makeBidenFrames(1, 3, -2, 0)
       ],
       jumpFall: [
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0)
+        makeBidenFrames(1, 3, 0, 0),
+        makeBidenFrames(0, 3, 0, 0),
+        makeBidenFrames(0, 4, 1, 0),
+        makeBidenFrames(0, 4, 2, 0)
       ],
       crouch: [
-        makeCPUFrames(0, 5, 0, 0.25),
-        makeCPUFrames(0, 5, 0, 0.5),
-        makeCPUFrames(0, 5, 0, 0.75),
-        makeCPUFrames(0, 5, 0, 1.0)
+        makeBidenFrames(0, 5, 0, 0.25),
+        makeBidenFrames(0, 5, 0, 0.5),
+        makeBidenFrames(0, 5, 0, 0.75),
+        makeBidenFrames(0, 5, 0, 1.0)
       ],
       fastAttack: [
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0)
+        makeBidenFrames(0, 0, 0, 0),
+        makeBidenFrames(0, 0, 0, 0),
+        makeBidenFrames(3, 0, 0, 0),
+        makeBidenFrames(0, 0, 0, 0)
       ],
       powerAttack: [
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(0, 0, 0, 0)
+        makeBidenFrames(4, 0, 0, 0),
+        makeBidenFrames(4, 0, -1, 0),
+        makeBidenFrames(4, 0, -1, 0),
+        makeBidenFrames(5, 0, 0, 0)
       ],
       block: [
-        makeCPUFrames(0, 0, 0, 0),
-        makeCPUFrames(2, 0, 0, 0),
-        makeCPUFrames(2, 0, 0, 0),
-        makeCPUFrames(2, 0, 0, 0)
+        makeBidenFrames(0, 0, 0, 0),
+        makeBidenFrames(2, 0, 0, 0),
+        makeBidenFrames(2, 0, 0, 0),
+        makeBidenFrames(2, 0, 0, 0)
       ],
       hitstun: [
-        makeCPUFrames(6, 0, 0, 0),
-        makeCPUFrames(6, 0, 1, 0),
-        makeCPUFrames(6, 0, 1, 0),
-        makeCPUFrames(6, 0, 0, 0)
+        makeBidenFrames(6, 0, 0, 0),
+        makeBidenFrames(6, 0, 1, 0),
+        makeBidenFrames(6, 0, 1, 0),
+        makeBidenFrames(6, 0, 0, 0)
       ],
       knockdown: [
-        makeCPUFrames(6, 0, 0, 0),
+        makeBidenFrames(6, 0, 0, 0),
         function(c) {
-          const pri = '#666666'; const sec = '#888888'; const dark = '#444444';
-          c.fillStyle = pri; c.fillRect(10, 30, 44, 12);
-          c.fillStyle = sec; c.fillRect(8, 26, 16, 12);
-          c.fillStyle = dark; c.fillRect(6, 22, 18, 6);
-          c.fillStyle = '#222222'; c.fillRect(44, 36, 14, 6);
+          const suitPri = '#1A1A3A'; const skinPri = '#F5D0B0';
+          const hairPri = '#CCCCCC'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(10, 30, 44, 12);
+          c.fillStyle = skinPri; c.fillRect(8, 26, 16, 12);
+          c.fillStyle = hairPri; c.fillRect(6, 22, 18, 6);
+          c.fillStyle = '#111111'; c.fillRect(10, 30, 12, 2); // sunglasses
+          c.fillStyle = shoe; c.fillRect(44, 36, 14, 6);
         },
         function(c) {
-          const pri = '#666666'; const sec = '#888888'; const dark = '#444444';
-          c.fillStyle = pri; c.fillRect(8, 38, 46, 10);
-          c.fillStyle = sec; c.fillRect(6, 32, 14, 10);
-          c.fillStyle = dark; c.fillRect(4, 28, 16, 6);
-          c.fillStyle = '#222222'; c.fillRect(44, 42, 14, 6);
+          const suitPri = '#1A1A3A'; const skinPri = '#F5D0B0';
+          const hairPri = '#CCCCCC'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(8, 38, 46, 10);
+          c.fillStyle = skinPri; c.fillRect(6, 32, 14, 10);
+          c.fillStyle = hairPri; c.fillRect(4, 28, 16, 6);
+          c.fillStyle = '#111111'; c.fillRect(8, 36, 10, 2); // sunglasses
+          c.fillStyle = shoe; c.fillRect(44, 42, 14, 6);
         },
         function(c) {
-          const pri = '#666666'; const sec = '#888888'; const dark = '#444444';
-          c.fillStyle = pri; c.fillRect(6, 44, 50, 8);
-          c.fillStyle = sec; c.fillRect(4, 40, 14, 8);
-          c.fillStyle = dark; c.fillRect(2, 36, 16, 6);
-          c.fillStyle = '#222222'; c.fillRect(46, 46, 12, 6);
+          const suitPri = '#1A1A3A'; const skinPri = '#F5D0B0';
+          const hairPri = '#CCCCCC'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(6, 44, 50, 8);
+          c.fillStyle = skinPri; c.fillRect(4, 40, 14, 8);
+          c.fillStyle = hairPri; c.fillRect(2, 36, 16, 6);
+          c.fillStyle = '#111111'; c.fillRect(6, 42, 10, 2); // sunglasses
+          c.fillStyle = shoe; c.fillRect(46, 46, 12, 6);
         }
       ]
     }
   };
+
+  // ===== PORTRAIT CACHE =====
+  const portraitCache = {};
+
+  function initPortraitCache(fighterDefs) {
+    for (const def of fighterDefs) {
+      if (portraitCache[def.name]) continue;
+      const oc = document.createElement('canvas');
+      oc.width = 40;
+      oc.height = 48;
+      const ctx = oc.getContext('2d');
+      ctx.imageSmoothingEnabled = false;
+
+      if (def.name === 'Trump') {
+        // Trump portrait: bust view
+        // Suit/shoulders
+        ctx.fillStyle = '#1A1A4E';
+        ctx.fillRect(4, 26, 32, 22);
+        // Shirt collar
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(14, 26, 12, 4);
+        // Red tie
+        ctx.fillStyle = '#CC0000';
+        ctx.fillRect(17, 29, 6, 14);
+        ctx.fillStyle = '#990000';
+        ctx.fillRect(18, 29, 4, 14);
+        // Skin (face)
+        ctx.fillStyle = '#FFB366';
+        ctx.fillRect(10, 8, 20, 20);
+        ctx.fillStyle = '#E8944D';
+        ctx.fillRect(20, 8, 10, 20);
+        // Hair
+        ctx.fillStyle = '#FFD700';
+        ctx.fillRect(8, 2, 24, 8);
+        ctx.fillRect(6, 4, 4, 6);
+        ctx.fillRect(30, 1, 6, 5);
+        ctx.fillStyle = '#DAA520';
+        ctx.fillRect(8, 2, 24, 3);
+        // Eyes
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(13, 14, 5, 4);
+        ctx.fillRect(22, 14, 5, 4);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(15, 15, 3, 3);
+        ctx.fillRect(24, 15, 3, 3);
+        // Nose
+        ctx.fillStyle = '#E8944D';
+        ctx.fillRect(18, 18, 4, 4);
+        // Mouth
+        ctx.fillStyle = '#CC7744';
+        ctx.fillRect(14, 24, 12, 2);
+      } else if (def.name === 'Biden') {
+        // Biden portrait: bust view
+        // Suit/shoulders
+        ctx.fillStyle = '#1A1A3A';
+        ctx.fillRect(4, 26, 32, 22);
+        // Shirt collar
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(14, 26, 12, 4);
+        // Blue tie
+        ctx.fillStyle = '#1A4A8A';
+        ctx.fillRect(17, 29, 6, 14);
+        ctx.fillStyle = '#0D2D5A';
+        ctx.fillRect(18, 29, 4, 14);
+        // Skin (face)
+        ctx.fillStyle = '#F5D0B0';
+        ctx.fillRect(10, 8, 20, 20);
+        ctx.fillStyle = '#D4AD85';
+        ctx.fillRect(20, 8, 10, 20);
+        // Hair (silver)
+        ctx.fillStyle = '#CCCCCC';
+        ctx.fillRect(8, 2, 24, 8);
+        ctx.fillRect(7, 5, 3, 5);
+        ctx.fillRect(31, 4, 4, 4);
+        ctx.fillStyle = '#999999';
+        ctx.fillRect(8, 2, 24, 3);
+        // Aviator sunglasses
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(11, 14, 18, 4);
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(11, 14, 18, 1);
+        // Nose
+        ctx.fillStyle = '#D4AD85';
+        ctx.fillRect(18, 18, 4, 4);
+        // Mouth
+        ctx.fillStyle = '#CC7744';
+        ctx.fillRect(14, 24, 12, 2);
+      }
+
+      portraitCache[def.name] = oc;
+    }
+  }
 
   // ===== FIGHTER RUNTIME FACTORY =====
   function createFighter(def, x, facing) {
@@ -1585,7 +1750,7 @@
   const fightScene = {
     enter() {
       player = createFighter(TRUMP, 100, 1);
-      cpu = createFighter(PLACEHOLDER_CPU, 300, -1);
+      cpu = createFighter(BIDEN, 300, -1);
       roundTimer = 3600;
       p1Wins = 0;
       p2Wins = 0;
@@ -1599,7 +1764,7 @@
       attackHeldFrames = 0;
       prevAttack = false;
       inputBuffer.length = 0;
-      initSpriteCache([TRUMP, PLACEHOLDER_CPU]);
+      initSpriteCache([TRUMP, BIDEN]);
     },
     update(input) {
       // Match fully over: wait for Enter to go to victory scene

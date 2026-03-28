@@ -43,18 +43,16 @@ created: 2026-03-28
 
 ## Spacing Scale
 
-All spacing is in internal resolution pixels (not CSS pixels). Multiples of 4 at 400x240.
+All spacing is in internal resolution pixels (not CSS pixels). All values are multiples of 4 drawn from the standard set {4, 8, 16, 24, 32, 48, 64}.
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| xs | 2px | Pixel art detail gaps, 1px outline + 1px space |
-| sm | 4px | HUD element inner padding, text-to-border gaps |
-| md | 8px | HUD bar spacing, element-to-element gaps |
-| lg | 12px | Section spacing within HUD, name-to-healthbar gap |
-| xl | 16px | HUD margin from screen edges |
-| 2xl | 24px | Major layout divisions (HUD area height) |
+| xs | 4px | HUD element inner padding, text-to-border gaps, round pip sizing |
+| sm | 8px | HUD bar spacing, element-to-element gaps, floor grain line interval |
+| md | 16px | HUD margin from screen edges, section spacing within HUD |
+| lg | 24px | Major layout divisions (HUD area height) |
 
-Exceptions: At 400x240, the standard 8-point web scale is too coarse. This 2px-base scale gives sufficient granularity for pixel art layout. All values are even numbers to avoid sub-pixel issues.
+Sub-4px gaps (e.g., 1px outline + 1px space for pixel art detail) are implementation constants defined in code, not design scale tokens. They do not appear in this spacing scale because they serve rendering mechanics rather than layout rhythm.
 
 ---
 

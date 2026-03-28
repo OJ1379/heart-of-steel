@@ -1613,34 +1613,179 @@
   }
 
   // ===== CPU AI =====
-  function getCPUInput(cpu, player) {
-    const input = {
-      left: false, right: false, up: false, down: false,
-      attack: false, block: false, ultimate: false, enter: false,
-      attackPressed: false, attackReleased: false, attackBuffered: false
-    };
+  const AI_STATE = {
+    APPROACH: 'approach',
+    PRESSURE: 'pressure',
+    BACK_OFF: 'backOff',
+    PUNISH: 'punish'
+  };
 
-    if (cpu.knockedDown || cpu.state === 'knockdown') return input;
+  const AI_DIFFICULTIES = [
+    { name: 'EASY',   reactionFrames: 15, blockChance: 0.20, comboChance: 0.10, approachDist: 70, pressureDist: 50, retreatHealth: 0.2, jumpChance: 0.005, powerAttackChance: 0.05 },
+    { name: 'MEDIUM', reactionFrames: 9,  blockChance: 0.50, comboChance: 0.30, approachDist: 65, pressureDist: 45, retreatHealth: 0.3, jumpChance: 0.008, powerAttackChance: 0.10 },
+    { name: 'HARD',   reactionFrames: 4,  blockChance: 0.80, comboChance: 0.60, approachDist: 55, pressureDist: 40, retreatHealth: 0.4, jumpChance: 0.012, powerAttackChance: 0.15 }
+  ];
 
-    const dist = Math.abs(cpu.x - player.x);
+  function createAIController(difficulty) {
+    const cfg = AI_DIFFICULTIES[difficulty];
+    return {
+      state: AI_STATE.APPROACH,
+      decisionCooldown: 0,
+      attackSequenceFrames: 0,
+      attackHoldFrames: 0,
+      comboHitsRemaining: 0,
+      isHolding: false,
+      retreatFrames: 0,
 
-    // Block when player is attacking (20% per-tick probability)
-    const playerAttacking = (player.state === 'fastAttack' || player.state === 'powerAttack');
-    if (playerAttacking && Math.random() < 0.003) {
-      input.block = true;
-      return input;
-    }
+      generateInput(cpu, player, frameCount) {
+        const input = {
+          left: false, right: false, up: false, down: false,
+          attack: false, block: false, ultimate: false, enter: false,
+          attackPressed: false, attackReleased: false, attackBuffered: false
+        };
 
-    // Move toward player if far enough away
-    if (dist > 60) {
-      if (player.x > cpu.x) {
-        input.right = true;
-      } else {
-        input.left = true;
+        // Don't act when knocked down
+        if (cpu.knockedDown || cpu.state === 'knockdown') return input;
+
+        const dist = Math.abs(cpu.x - player.x);
+        const facingPlayer = (player.x > cpu.x) ? 1 : -1;
+        const playerAttacking = (player.state === 'fastAttack' || player.state === 'powerAttack');
+        const playerInRecovery = (player.attackPhase === 'recovery');
+        const cpuHealthPct = cpu.health / cpu.def.stats.health;
+
+        // === ATTACK SEQUENCE HANDLING ===
+        // If in an attack sequence (combo or power), handle frame-by-frame
+        if (this.comboHitsRemaining > 0) {
+          this.attackSequenceFrames++;
+          // Pattern: 2 frames attack=true, 1 frame attack=false (triggers fast attack)
+          const cyclePos = this.attackSequenceFrames % 3;
+          if (cyclePos < 2) {
+            input.attack = true;
+            input.attackBuffered = true;
+          } else {
+            input.attack = false;
+            this.comboHitsRemaining--;
+          }
+          // Edge detection for fighter charge system
+          input.attackPressed = (input.attack && cyclePos === 0);
+          input.attackReleased = (!input.attack && cyclePos === 2);
+          return input;
+        }
+        if (this.isHolding) {
+          this.attackHoldFrames++;
+          if (this.attackHoldFrames < 14) {
+            input.attack = true;  // Hold for 14 frames (> 12 threshold)
+          } else {
+            input.attack = false;  // Release triggers power attack
+            input.attackReleased = true;
+            this.isHolding = false;
+            this.attackHoldFrames = 0;
+          }
+          return input;
+        }
+
+        // === DECISION COOLDOWN (reaction delay) ===
+        this.decisionCooldown = Math.max(0, this.decisionCooldown - 1);
+        if (this.decisionCooldown > 0) {
+          // Between decisions: maintain movement based on current state
+          if (this.state === AI_STATE.APPROACH) {
+            if (facingPlayer === 1) input.right = true; else input.left = true;
+          } else if (this.state === AI_STATE.BACK_OFF) {
+            if (facingPlayer === 1) input.left = true; else input.right = true;
+          }
+          return input;
+        }
+
+        // === STATE TRANSITIONS ===
+        this.decisionCooldown = cfg.reactionFrames;
+
+        // Back-off: low health and close
+        if (cpuHealthPct < cfg.retreatHealth && dist < cfg.approachDist) {
+          this.state = AI_STATE.BACK_OFF;
+          this.retreatFrames = 30 + Math.floor(Math.random() * 30);
+        }
+        // Punish: player in recovery and close enough
+        else if (playerInRecovery && dist < cfg.pressureDist + 20) {
+          this.state = AI_STATE.PUNISH;
+        }
+        // Pressure: close enough to attack
+        else if (dist < cfg.pressureDist) {
+          this.state = AI_STATE.PRESSURE;
+        }
+        // Approach: too far
+        else {
+          this.state = AI_STATE.APPROACH;
+        }
+
+        // === BLOCKING (reactive, independent of state) ===
+        if (playerAttacking && dist < 80 && Math.random() < cfg.blockChance) {
+          input.block = true;
+          return input;
+        }
+
+        // === BEHAVIOR BY STATE ===
+        switch (this.state) {
+          case AI_STATE.APPROACH:
+            if (facingPlayer === 1) input.right = true; else input.left = true;
+            // Occasional jump
+            if (Math.random() < cfg.jumpChance) input.up = true;
+            break;
+
+          case AI_STATE.PRESSURE:
+            // Decide: combo, power attack, or single attack
+            if (Math.random() < cfg.powerAttackChance) {
+              // Start power attack hold
+              this.isHolding = true;
+              this.attackHoldFrames = 0;
+              input.attack = true;
+              input.attackPressed = true;
+            } else if (Math.random() < cfg.comboChance) {
+              // Start combo chain (2-4 hits based on difficulty)
+              const maxHits = cfg === AI_DIFFICULTIES[2] ? 4 : (cfg === AI_DIFFICULTIES[1] ? 3 : 2);
+              this.comboHitsRemaining = 1 + Math.floor(Math.random() * maxHits);
+              this.attackSequenceFrames = 0;
+              input.attack = true;
+              input.attackPressed = true;
+              input.attackBuffered = true;
+            } else {
+              // Single fast attack
+              input.attack = true;
+              input.attackPressed = true;
+              input.attackBuffered = true;
+            }
+            break;
+
+          case AI_STATE.BACK_OFF:
+            if (facingPlayer === 1) input.left = true; else input.right = true;
+            this.retreatFrames--;
+            if (this.retreatFrames <= 0) this.state = AI_STATE.APPROACH;
+            // Block while retreating if player is attacking
+            if (playerAttacking) input.block = true;
+            break;
+
+          case AI_STATE.PUNISH:
+            // Rush in and attack during player recovery
+            if (dist > cfg.pressureDist) {
+              if (facingPlayer === 1) input.right = true; else input.left = true;
+            } else {
+              if (Math.random() < 0.5 && cfg.comboChance > 0.2) {
+                this.comboHitsRemaining = 2;
+                this.attackSequenceFrames = 0;
+                input.attack = true;
+                input.attackPressed = true;
+                input.attackBuffered = true;
+              } else {
+                input.attack = true;
+                input.attackPressed = true;
+                input.attackBuffered = true;
+              }
+            }
+            break;
+        }
+
+        return input;
       }
-    }
-
-    return input;
+    };
   }
 
   // ===== HUD RENDERING =====
@@ -1725,6 +1870,9 @@
   let roundWinner = null;  // 'player' or 'cpu'
   let matchOver = false;
   let winner = null;
+  let aiController = null;
+  let roundSplashTimer = 0;    // Total frames remaining in splash (90 = start, 0 = fighting)
+  let roundSplashPhase = '';   // 'round' or 'fight'
 
   // Selection state (set by charSelectScene)
   let selectedP1Def = null;
@@ -1751,6 +1899,8 @@
     koSplashTimer = 0;
     roundWinner = null;
     hitStopFramesRemaining = 0;
+    roundSplashTimer = 0;
+    roundSplashPhase = '';
   }
 
   // ===== CHARACTER SELECT SCENE =====
@@ -1918,8 +2068,20 @@
       prevAttack = false;
       inputBuffer.length = 0;
       initSpriteCache([selectedP1Def || TRUMP, selectedP2Def || BIDEN]);
+      aiController = createAIController(selectedDifficulty);
+      roundSplashTimer = 90;
+      roundSplashPhase = 'round';
     },
     update(input) {
+      // Round splash: block ALL input and game updates
+      if (roundSplashTimer > 0) {
+        roundSplashTimer--;
+        if (roundSplashTimer === 30) {
+          roundSplashPhase = 'fight';
+        }
+        return null;
+      }
+
       // Match fully over: wait for Enter to go to victory scene
       if (matchOver) {
         if (input.enter) return 'victory';
@@ -1948,6 +2110,8 @@
         // Start next round
         currentRound++;
         resetRound();
+        roundSplashTimer = 90;
+        roundSplashPhase = 'round';
         return null;
       }
 
@@ -1965,7 +2129,7 @@
       updateFighter(player, input, cpu);
 
       // CPU AI input
-      const cpuInput = getCPUInput(cpu, player);
+      const cpuInput = aiController.generateInput(cpu, player, frameCounter);
       updateFighter(cpu, cpuInput, player);
 
       // Push-back overlap resolution
@@ -2011,6 +2175,23 @@
       // HUD overlay
       if (player && cpu) {
         drawHUD(ctx, player, cpu, roundTimer, p1Wins, p2Wins);
+      }
+
+      // Round splash overlay
+      if (roundSplashTimer > 0) {
+        if (roundSplashPhase === 'round') {
+          // Semi-transparent backdrop band
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(0, 85, 400, 50);
+          // "ROUND N" text
+          drawText(ctx, 'ROUND ' + currentRound, 200, 100, '#FFFFFF', 16, 'center');
+        } else if (roundSplashPhase === 'fight') {
+          // Semi-transparent backdrop band (narrower for FIGHT)
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(0, 95, 400, 30);
+          // "FIGHT!" text in gold
+          drawText(ctx, 'FIGHT!', 200, 108, '#FFCC00', 16, 'center');
+        }
       }
 
       // KO splash overlay (during 90-frame countdown)

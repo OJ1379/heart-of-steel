@@ -344,36 +344,27 @@
     const frame = stateFrames[Math.floor(fighter.currentFrame) % stateFrames.length];
     const fx = Math.floor(fighter.x);
     const fy = Math.floor(fighter.y);
+    const rot = fighter.rotation || 0;
+    const hw = Math.floor(frame.width / 2);
 
     // Flash white on hit
     if (fighter.flashFrames > 0) {
       ctx.save();
-      if (fighter.facing === -1) {
-        ctx.translate(fx, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(frame, -Math.floor(frame.width / 2), fy - frame.height);
-      } else {
-        ctx.drawImage(frame, fx - Math.floor(frame.width / 2), fy - frame.height);
-      }
-      // White overlay
+      ctx.translate(fx, fy - hw);
+      if (rot !== 0) ctx.rotate(rot);
+      if (fighter.facing === -1) ctx.scale(-1, 1);
+      ctx.drawImage(frame, -hw, -hw);
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = '#FFFFFF';
-      if (fighter.facing === -1) {
-        ctx.fillRect(-Math.floor(frame.width / 2), fy - frame.height, frame.width, frame.height);
-      } else {
-        ctx.fillRect(fx - Math.floor(frame.width / 2), fy - frame.height, frame.width, frame.height);
-      }
+      ctx.fillRect(-hw, -hw, frame.width, frame.height);
       ctx.restore();
       fighter.flashFrames--;
     } else {
       ctx.save();
-      if (fighter.facing === -1) {
-        ctx.translate(fx, 0);
-        ctx.scale(-1, 1);
-        ctx.drawImage(frame, -Math.floor(frame.width / 2), fy - frame.height);
-      } else {
-        ctx.drawImage(frame, fx - Math.floor(frame.width / 2), fy - frame.height);
-      }
+      ctx.translate(fx, fy - hw);
+      if (rot !== 0) ctx.rotate(rot);
+      if (fighter.facing === -1) ctx.scale(-1, 1);
+      ctx.drawImage(frame, -hw, -hw);
       ctx.restore();
     }
   }
@@ -718,6 +709,8 @@
     spriteHeight: 56,
     stats: {
       walkSpeed: 1.8,
+      accel: 0.7,
+      friction: 0.78,
       jumpForce: -7.5,
       gravity: 0.45,
       health: 1000,
@@ -1046,6 +1039,8 @@
     spriteHeight: 56,
     stats: {
       walkSpeed: 1.2,
+      accel: 0.5,
+      friction: 0.85,
       jumpForce: -7.5,
       gravity: 0.45,
       health: 1200,
@@ -1366,6 +1361,8 @@
     spriteHeight: 56,
     stats: {
       walkSpeed: 1.6,
+      accel: 0.9,
+      friction: 0.80,
       jumpForce: -7.5,
       gravity: 0.45,
       health: 1000,
@@ -1689,6 +1686,8 @@
     spriteHeight: 56,
     stats: {
       walkSpeed: 1.5,
+      accel: 0.7,
+      friction: 0.76,
       jumpForce: -7.5,
       gravity: 0.45,
       health: 1050,
@@ -2009,6 +2008,8 @@
     spriteHeight: 56,
     stats: {
       walkSpeed: 2.2,
+      accel: 1.1,
+      friction: 0.82,
       jumpForce: -7.5,
       gravity: 0.45,
       health: 850,
@@ -2361,7 +2362,11 @@
       ultimateFrame: 0,       // current frame of ultimate animation
       airHits: 0,
       juggleGravityMul: 1.0,
-      isAirborne: false
+      isAirborne: false,
+      rotation: 0,
+      rotationVel: 0,
+      ragdoll: false,
+      bounceCount: 0
     };
   }
 
@@ -2390,21 +2395,21 @@
       },
       update(fighter, input, opponent) {
         fighter.stateFrame++;
-        // Animate idle: advance every 15 ticks
+        // Decelerate with ground friction
+        const friction = fighter.def.stats.friction || 0.80;
+        fighter.vx *= friction;
+        fighter.x = clamp(fighter.x + fighter.vx, STAGE_LEFT, STAGE_RIGHT);
         if (fighter.stateFrame % 15 === 0) {
           fighter.currentFrame = (fighter.currentFrame + 1) % 4;
         }
-        // Input transitions
         if (input.up) return 'jumpRise';
         if (input.down) return 'crouch';
-        // Walk: check facing vs direction key
         if (input.right) {
           return fighter.facing === 1 ? 'walkForward' : 'walkBack';
         }
         if (input.left) {
           return fighter.facing === -1 ? 'walkForward' : 'walkBack';
         }
-        // Attack: charge detection
         const attackType = updateFighterCharge(fighter, input);
         if (attackType === 'fast') return 'fastAttack';
         if (attackType === 'power') return 'powerAttack';
@@ -2420,14 +2425,15 @@
       },
       update(fighter, input, opponent) {
         fighter.stateFrame++;
-        // Move forward
         const spd = fighter.def.stats.walkSpeed;
-        fighter.x = clamp(fighter.x + spd * fighter.facing, STAGE_LEFT, STAGE_RIGHT);
-        // Animate every 8 ticks
+        const accel = fighter.def.stats.accel || 0.8;
+        // Accelerate toward max walk speed in facing direction
+        fighter.vx += accel * fighter.facing;
+        if (fighter.facing === 1) fighter.vx = Math.min(fighter.vx, spd);
+        else fighter.vx = Math.max(fighter.vx, -spd);
         if (fighter.stateFrame % 8 === 0) {
           fighter.currentFrame = (fighter.currentFrame + 1) % 4;
         }
-        // Check if still moving forward
         const movingForward = (fighter.facing === 1 && input.right) ||
                               (fighter.facing === -1 && input.left);
         if (!movingForward) return 'idle';
@@ -2448,14 +2454,15 @@
       },
       update(fighter, input, opponent) {
         fighter.stateFrame++;
-        // Move backward
         const spd = fighter.def.stats.walkSpeed;
-        fighter.x = clamp(fighter.x - spd * fighter.facing, STAGE_LEFT, STAGE_RIGHT);
-        // Animate every 8 ticks
+        const accel = fighter.def.stats.accel || 0.8;
+        // Accelerate toward max walk speed in opposite of facing direction
+        fighter.vx -= accel * fighter.facing;
+        if (fighter.facing === 1) fighter.vx = Math.max(fighter.vx, -spd);
+        else fighter.vx = Math.min(fighter.vx, spd);
         if (fighter.stateFrame % 8 === 0) {
           fighter.currentFrame = (fighter.currentFrame + 1) % 4;
         }
-        // Check if still moving back
         const movingBack = (fighter.facing === 1 && input.left) ||
                            (fighter.facing === -1 && input.right);
         if (!movingBack) return 'idle';
@@ -2473,12 +2480,19 @@
       enter(fighter) {
         fighter.vy = fighter.def.stats.jumpForce;
         fighter.currentFrame = 0;
+        // vx carries from ground — no reset
       },
       update(fighter, input, opponent) {
         fighter.stateFrame++;
         fighter.vy += fighter.def.stats.gravity * (fighter.juggleGravityMul || 1.0);
         fighter.y += fighter.vy;
-        // Map frame to rise phase
+        // Air steering: 40% of ground accel, very low drag
+        const spd = fighter.def.stats.walkSpeed;
+        const airAccel = (fighter.def.stats.accel || 0.8) * 0.4;
+        if (input.right) fighter.vx = Math.min(fighter.vx + airAccel, spd);
+        else if (input.left) fighter.vx = Math.max(fighter.vx - airAccel, -spd);
+        else fighter.vx *= 0.99;
+        fighter.x = clamp(fighter.x + fighter.vx, STAGE_LEFT, STAGE_RIGHT);
         fighter.currentFrame = Math.min(3, Math.floor(fighter.stateFrame / 4));
         if (fighter.vy >= 0) return 'jumpFall';
         return null;
@@ -2494,8 +2508,14 @@
         fighter.stateFrame++;
         fighter.vy += fighter.def.stats.gravity * (fighter.juggleGravityMul || 1.0);
         fighter.y += fighter.vy;
+        // Air steering
+        const spd = fighter.def.stats.walkSpeed;
+        const airAccel = (fighter.def.stats.accel || 0.8) * 0.4;
+        if (input.right) fighter.vx = Math.min(fighter.vx + airAccel, spd);
+        else if (input.left) fighter.vx = Math.max(fighter.vx - airAccel, -spd);
+        else fighter.vx *= 0.99;
+        fighter.x = clamp(fighter.x + fighter.vx, STAGE_LEFT, STAGE_RIGHT);
         fighter.currentFrame = Math.min(3, Math.floor(fighter.stateFrame / 4));
-        // Landing check
         if (fighter.y >= GROUND_Y) {
           fighter.y = GROUND_Y;
           fighter.vy = 0;
@@ -2630,6 +2650,9 @@
       update(fighter, input, opponent) {
         fighter.stateFrame++;
         fighter.currentFrame = Math.min(3, Math.floor(fighter.stateFrame / 3));
+        // Slide: apply vx with friction so knockback feels physical
+        fighter.vx *= 0.82;
+        fighter.x = clamp(fighter.x + fighter.vx, STAGE_LEFT, STAGE_RIGHT);
         if (fighter.hitstunRemaining > 0) {
           fighter.hitstunRemaining--;
           return null;
@@ -2646,15 +2669,61 @@
         fighter.currentFrame = 0;
         fighter.knockedDown = true;
         fighter.comboCount = 0;
+        fighter.ragdoll = true;
+        fighter.bounceCount = 0;
+        // rotationVel set by resolveHit based on hit direction
+        if (fighter.rotationVel === 0) fighter.rotationVel = (Math.random() > 0.5 ? 1 : -1) * 0.12;
       },
       update(fighter, input, opponent) {
         fighter.stateFrame++;
-        // Play animation to frame 3 then hold
+
+        if (fighter.ragdoll) {
+          // Full ragdoll: gravity + horizontal momentum + spin
+          fighter.vy += fighter.def.stats.gravity * 1.3;
+          fighter.y += fighter.vy;
+          fighter.x = clamp(fighter.x + fighter.vx, STAGE_LEFT, STAGE_RIGHT);
+          fighter.rotation += fighter.rotationVel;
+
+          // Wall bounce
+          if (fighter.x <= STAGE_LEFT + 2 || fighter.x >= STAGE_RIGHT - 2) {
+            fighter.vx *= -0.45;
+            fighter.rotationVel *= -0.7;
+            fighter.x = clamp(fighter.x, STAGE_LEFT + 2, STAGE_RIGHT - 2);
+          }
+
+          // Ground bounce / landing
+          if (fighter.y >= GROUND_Y) {
+            fighter.y = GROUND_Y;
+            fighter.bounceCount++;
+            const bounceStrength = Math.abs(fighter.vy);
+            if (bounceStrength > 2.5 && fighter.bounceCount < 3) {
+              // Bounce: reduce energy
+              fighter.vy *= -0.38;
+              fighter.vx *= 0.65;
+              fighter.rotationVel *= 0.55;
+              playSFX('punch');
+            } else {
+              // Stop bouncing — slide to rest
+              fighter.vy = 0;
+              fighter.ragdoll = false;
+            }
+          }
+        } else {
+          // Grounded slide after ragdoll: decelerate with friction
+          fighter.vx *= 0.80;
+          fighter.x = clamp(fighter.x + fighter.vx, STAGE_LEFT, STAGE_RIGHT);
+          fighter.rotationVel *= 0.88;
+          fighter.rotation += fighter.rotationVel;
+        }
+
+        // Hold last anim frame while down
         if (fighter.currentFrame < 3 && fighter.stateFrame % 10 === 0) {
           fighter.currentFrame++;
         }
-        // Get up after 60 frames
-        if (fighter.stateFrame >= 60 && fighter.health > 0) {
+
+        // Get up after enough time, only when stopped and alive
+        const canGetUp = fighter.stateFrame >= 80 && !fighter.ragdoll && Math.abs(fighter.vx) < 0.3;
+        if (canGetUp && fighter.health > 0) {
           fighter.knockedDown = false;
           return 'idle';
         }
@@ -2662,6 +2731,11 @@
       },
       exit(fighter) {
         fighter.knockedDown = false;
+        fighter.ragdoll = false;
+        fighter.rotation = 0;
+        fighter.rotationVel = 0;
+        fighter.vx = 0;
+        fighter.bounceCount = 0;
       }
     }
   };
@@ -2752,16 +2826,15 @@
       }
     }
 
-    // Apply gravity when airborne
-    if (fighter.y < GROUND_Y && fighter.state !== 'jumpRise' && fighter.state !== 'jumpFall') {
+    // Apply global gravity for states that don't manage their own physics
+    const selfManaged = ['jumpRise', 'jumpFall', 'knockdown', 'hitstun'];
+    if (fighter.y < GROUND_Y && !selfManaged.includes(fighter.state)) {
       fighter.vy += fighter.def.stats.gravity;
       fighter.y += fighter.vy;
       if (fighter.y >= GROUND_Y) {
         fighter.y = GROUND_Y;
         fighter.vy = 0;
-        if (fighter.state !== 'knockdown') {
-          transitionFighterState(fighter, 'idle');
-        }
+        transitionFighterState(fighter, 'idle');
       }
     }
   }
@@ -2880,25 +2953,33 @@
     // Flash defender white
     defender.flashFrames = 2;
 
-    // If not blocking: hitstun + knockback
+    // If not blocking: hitstun + velocity-based knockback
     if (!defender.isBlocking) {
+      const isPower = attacker.currentAttackType === 'power';
+      // Velocity knockback: scales with attack type
+      const knockVx = (isPower ? 7 : 4) * attacker.facing;
+      defender.vx += knockVx;
+
       if (defender.health <= 0) {
+        // KO ragdoll: strong launch
+        defender.vx = (isPower ? 12 : 8) * attacker.facing;
+        defender.vy = isPower ? -11 : -8;
+        defender.rotationVel = attacker.facing * (0.10 + Math.random() * 0.08);
         transitionFighterState(defender, 'knockdown');
       } else {
         defender.hitstunRemaining = atk.hitstun;
         transitionFighterState(defender, 'hitstun');
-      }
-      // Knockback
-      defender.x = clamp(defender.x + 8 * attacker.facing, STAGE_LEFT, STAGE_RIGHT);
-      // Juggle launch: power attack launching near-grounded defender
-      if (attacker.currentAttackType === 'power' && defender.airHits < 4) {
-        defender.vy = -6 - (defender.airHits * 0.5);
-        defender.airHits++;
-        defender.juggleGravityMul = 1.0 + defender.airHits * 0.15;
+        // Juggle launch: power attack
+        if (isPower && defender.airHits < 4) {
+          defender.vy = -6 - (defender.airHits * 0.5);
+          defender.vx = 5 * attacker.facing;
+          defender.airHits++;
+          defender.juggleGravityMul = 1.0 + defender.airHits * 0.15;
+        }
       }
     } else {
-      // Small pushback on block
-      defender.x = clamp(defender.x + 3 * attacker.facing, STAGE_LEFT, STAGE_RIGHT);
+      // Small pushback on block — velocity based
+      defender.vx += 2 * attacker.facing;
     }
   }
 

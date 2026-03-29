@@ -36,7 +36,7 @@
   const CHARGE_THRESHOLD = 12;
 
   // HUD layout constants
-  const HUD_H = 28;
+  const HUD_H = 30;
 
   // ===== CANVAS SETUP =====
   const canvas = document.getElementById('game');
@@ -139,6 +139,137 @@
       }
       return null;
     }
+  }
+
+  // ===== AUDIO SYSTEM =====
+  let audioCtx = null;
+  let bgMusicNodes = [];
+  let bgMusicPlaying = false;
+
+  function initAudio() {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(e) {
+      audioCtx = null;
+    }
+  }
+
+  function playSFX(type) {
+    if (!audioCtx) return;
+    try {
+      const now = audioCtx.currentTime;
+      const gain = audioCtx.createGain();
+      gain.connect(audioCtx.destination);
+
+      if (type === 'punch') {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        osc.start(now); osc.stop(now + 0.08);
+      } else if (type === 'powerHit') {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.connect(gain);
+        osc.start(now); osc.stop(now + 0.2);
+      } else if (type === 'block') {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.setValueAtTime(250, now + 0.02);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        osc.connect(gain);
+        osc.start(now); osc.stop(now + 0.06);
+      } else if (type === 'guardBreak') {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+        gain.gain.setValueAtTime(0.6, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(gain);
+        osc.start(now); osc.stop(now + 0.3);
+      } else if (type === 'wallBreak') {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(60, now);
+        osc.frequency.exponentialRampToValueAtTime(20, now + 0.4);
+        gain.gain.setValueAtTime(0.7, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        osc.start(now); osc.stop(now + 0.4);
+        const osc2 = audioCtx.createOscillator();
+        osc2.type = 'square';
+        osc2.frequency.setValueAtTime(800, now);
+        osc2.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+        const g2 = audioCtx.createGain();
+        g2.gain.setValueAtTime(0.4, now); g2.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc2.connect(g2); g2.connect(audioCtx.destination);
+        osc2.start(now); osc2.stop(now + 0.1);
+      } else if (type === 'ko') {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(55, now + 0.6);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        osc.connect(gain);
+        osc.start(now); osc.stop(now + 0.6);
+      } else if (type === 'ultimate') {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(110, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.5);
+        gain.gain.setValueAtTime(0.0, now);
+        gain.gain.linearRampToValueAtTime(0.5, now + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.connect(gain);
+        osc.start(now); osc.stop(now + 0.5);
+      }
+    } catch(e) {}
+  }
+
+  function startBGMusic(stageKey) {
+    stopBGMusic();
+    if (!audioCtx) return;
+    const roots = { 'white-house': 262, 'greek-island': 294, 'mar-a-lago': 330, 'golf-course': 247 };
+    const root = roots[stageKey] || 262;
+    const melody = [0, 4, 7, 12, 7, 4, 0, 5, 9, 12, 9, 5, 3, 7, 10, 15];
+    let step = 0;
+    const bpm = 140;
+    const stepDur = 60 / bpm / 2;
+    function playNote() {
+      if (!audioCtx || !bgMusicPlaying) return;
+      try {
+        const freq = root * Math.pow(2, melody[step % melody.length] / 12);
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + stepDur * 0.8);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + stepDur);
+        step++;
+      } catch(e) {}
+    }
+    bgMusicPlaying = true;
+    const intervalId = setInterval(playNote, stepDur * 1000);
+    bgMusicNodes = [intervalId];
+  }
+
+  function stopBGMusic() {
+    bgMusicPlaying = false;
+    bgMusicNodes.forEach(id => clearInterval(id));
+    bgMusicNodes = [];
   }
 
   // ===== GAME LOOP =====
@@ -602,6 +733,8 @@
         hitstun: 24
       }
     },
+    ultimate: { name: 'Art of the Deal', damage: 280, stunFrames: 60,
+      colors: ['#FFD700', '#FFA500'], description: 'Golden wall sweeps screen' },
     sprites: {
       idle: [
         makeTrumpFrames(0, 0, 0, 0),    // neutral
@@ -928,6 +1061,8 @@
         hitstun: 28
       }
     },
+    ultimate: { name: 'Ice Cream Avalanche', damage: 200, stunFrames: 90,
+      colors: ['#F4D03F', '#FFFFFF'], description: 'Wave of ice cream freezes' },
     sprites: {
       idle: [
         makeBidenFrames(0, 0, 0, 0),
@@ -1246,6 +1381,8 @@
         hitstun: 22
       }
     },
+    ultimate: { name: 'Drone Commander', damage: 250, stunFrames: 45,
+      colors: ['#888888', '#CC0000'], description: 'Missiles rain down' },
     sprites: {
       idle: [
         makeObamaFrames(0, 0, 0, 0),
@@ -1567,6 +1704,8 @@
         hitstun: 24
       }
     },
+    ultimate: { name: 'Now Watch This Drive', damage: 220, stunFrames: 50,
+      colors: ['#CC4400', '#FF6600'], description: 'Flaming golf ball ricochets' },
     sprites: {
       idle: [
         makeBushFrames(0, 0, 0, 0),
@@ -1885,6 +2024,8 @@
         hitstun: 20
       }
     },
+    ultimate: { name: 'Executive Charm', damage: 230, stunFrames: 80,
+      colors: ['#4488FF', '#AACCFF'], description: 'Sax stuns then combo finisher' },
     sprites: {
       idle: [
         makeClintonFrames(0, 0, 0, 0),
@@ -2204,7 +2345,15 @@
       knockedDown: false,
       flashFrames: 0,
       _chargeFrames: 0,     // per-fighter charge tracking
-      _prevAttack: false
+      _prevAttack: false,
+      guardMeter: 100,        // 0-100
+      guardBreakStun: 0,      // frames remaining frozen in guard break
+      ultimateMeter: 0,       // 0-100
+      ultimateActive: false,  // true while ultimate animation is playing
+      ultimateFrame: 0,       // current frame of ultimate animation
+      airHits: 0,
+      juggleGravityMul: 1.0,
+      isAirborne: false
     };
   }
 
@@ -2319,7 +2468,7 @@
       },
       update(fighter, input, opponent) {
         fighter.stateFrame++;
-        fighter.vy += fighter.def.stats.gravity;
+        fighter.vy += fighter.def.stats.gravity * (fighter.juggleGravityMul || 1.0);
         fighter.y += fighter.vy;
         // Map frame to rise phase
         fighter.currentFrame = Math.min(3, Math.floor(fighter.stateFrame / 4));
@@ -2335,7 +2484,7 @@
       },
       update(fighter, input, opponent) {
         fighter.stateFrame++;
-        fighter.vy += fighter.def.stats.gravity;
+        fighter.vy += fighter.def.stats.gravity * (fighter.juggleGravityMul || 1.0);
         fighter.y += fighter.vy;
         fighter.currentFrame = Math.min(3, Math.floor(fighter.stateFrame / 4));
         // Landing check
@@ -2534,6 +2683,43 @@
 
   // ===== FIGHTER UPDATE =====
   function updateFighter(fighter, input, opponent) {
+    // Guard break stun: freeze fighter regardless of input
+    if (fighter.guardBreakStun > 0) {
+      fighter.guardBreakStun--;
+      fighter.flashFrames = 2;
+      return;
+    }
+
+    // Guard regeneration when not blocking
+    if (!fighter.isBlocking && fighter.guardMeter < 100) {
+      fighter.guardMeter = Math.min(100, fighter.guardMeter + 0.4);
+    }
+
+    // Airborne tracking
+    fighter.isAirborne = (fighter.y < GROUND_Y - 2);
+    // Reset juggle on landing
+    if (!fighter.isAirborne) {
+      fighter.airHits = 0;
+      fighter.juggleGravityMul = 1.0;
+    }
+
+    // Ultimate activation
+    if (input.ultimate && fighter.ultimateMeter >= 100 && !fighter.ultimateActive && fighter.guardBreakStun === 0) {
+      fighter.ultimateActive = true;
+      fighter.ultimateFrame = 0;
+      fighter.ultimateMeter = 0;
+      playSFX('ultimate');
+    }
+    // Ultimate animation tick
+    if (fighter.ultimateActive) {
+      fighter.ultimateFrame++;
+      if (fighter.ultimateFrame >= 90) {
+        fighter.ultimateActive = false;
+        fighter.ultimateFrame = 0;
+      }
+      return;
+    }
+
     // Superstate: hitstun check
     if (fighter.hitstunRemaining > 0 && fighter.state !== 'knockdown') {
       if (fighter.state !== 'hitstun') {
@@ -2642,16 +2828,39 @@
     // Base damage with attacker power multiplier
     const baseDamage = Math.floor(atk.damage * attacker.def.stats.power);
 
-    // Apply block reduction (80% reduction)
+    // Juggle scaling: diminishing returns for air combos
+    const juggleScale = Math.max(0.4, 1.0 - (defender.airHits * 0.10));
+    const scaledDamage = Math.floor(baseDamage * juggleScale);
+
+    // Apply block reduction or guard break
     let damage;
     if (defender.isBlocking) {
-      damage = Math.floor(baseDamage * 0.2);
+      damage = Math.floor(scaledDamage * 0.2);
+      // Drain guard meter
+      const guardDrain = Math.floor(scaledDamage * 0.5);
+      defender.guardMeter = Math.max(0, defender.guardMeter - guardDrain);
+      if (defender.guardMeter <= 0 && defender.guardBreakStun === 0) {
+        // Guard break: stun + full damage
+        defender.guardBreakStun = 60;
+        defender.guardMeter = 100;
+        damage = scaledDamage; // full damage on guard break
+        defender.isBlocking = false;
+        applyHitStop(8);
+        playSFX('guardBreak');
+      }
     } else {
-      damage = baseDamage;
+      damage = scaledDamage;
     }
+
+    // Play hit SFX
+    playSFX(defender.isBlocking ? 'block' : (attacker.currentAttackType === 'power' ? 'powerHit' : 'punch'));
 
     // Apply damage
     defender.health = Math.max(0, defender.health - damage);
+
+    // Ultimate meter gain
+    attacker.ultimateMeter = Math.min(100, attacker.ultimateMeter + damage);
+    defender.ultimateMeter = Math.min(100, defender.ultimateMeter + Math.floor(damage * 0.5));
 
     // Hit stop
     if (attacker.currentAttackType === 'power') {
@@ -2673,10 +2882,49 @@
       }
       // Knockback
       defender.x = clamp(defender.x + 8 * attacker.facing, STAGE_LEFT, STAGE_RIGHT);
+      // Juggle launch: power attack launching near-grounded defender
+      if (attacker.currentAttackType === 'power' && defender.airHits < 4) {
+        defender.vy = -6 - (defender.airHits * 0.5);
+        defender.airHits++;
+        defender.juggleGravityMul = 1.0 + defender.airHits * 0.15;
+      }
     } else {
       // Small pushback on block
       defender.x = clamp(defender.x + 3 * attacker.facing, STAGE_LEFT, STAGE_RIGHT);
     }
+  }
+
+  function applyUltimateDamage(attacker, defender) {
+    const ult = attacker.def.ultimate;
+    if (!ult) return;
+    const damage = ult.damage;
+    defender.health = Math.max(0, defender.health - damage);
+    attacker.ultimateMeter = Math.min(100, attacker.ultimateMeter + damage * 0.2);
+    defender.flashFrames = 8;
+    if (ult.stunFrames) {
+      defender.hitstunRemaining = ult.stunFrames;
+      if (defender.state !== 'knockdown') transitionFighterState(defender, 'hitstun');
+    }
+    if (defender.health <= 0 && defender.state !== 'knockdown') {
+      transitionFighterState(defender, 'knockdown');
+    }
+    applyHitStop(8);
+    playSFX('ultimate');
+  }
+
+  function checkWallBreak(attacker, defender) {
+    if (stageTier !== 1) return;
+    if (attacker.currentAttackType !== 'power') return;
+    if (attacker.attackPhase !== 'active') return;
+    if (defender.isBlocking) return;
+    const nearLeft  = defender.x <= STAGE_LEFT + 8;
+    const nearRight = defender.x >= STAGE_RIGHT - 8;
+    if (!nearLeft && !nearRight) return;
+    wallBreakActive = true;
+    wallBreakTimer = 30;
+    wallBreakSide = nearLeft ? 'left' : 'right';
+    playSFX('wallBreak');
+    applyHitStop(15);
   }
 
   // ===== CPU AI =====
@@ -2850,6 +3098,11 @@
             break;
         }
 
+        // Use ultimate when meter full and player is close
+        if (cpu.ultimateMeter >= 100 && dist < 100 && Math.random() < 0.05) {
+          input.ultimate = true;
+        }
+
         return input;
       }
     };
@@ -2918,11 +3171,141 @@
     // Round win pips
     drawRoundPips(ctx, 120, 20, p1Wins);
     drawRoundPips(ctx, 268, 20, p2Wins);
+
+    // P1 Guard meter (blue, thin bar below health)
+    const p1Guard = Math.max(0, player.guardMeter) / 100;
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(48, 18, 128, 4);
+    ctx.fillStyle = player.guardBreakStun > 0 ? '#FF4444' : '#4488FF';
+    ctx.fillRect(48, 18, Math.floor(128 * p1Guard), 4);
+
+    // P2 Guard meter (fills right-to-left)
+    const p2Guard = Math.max(0, cpu.guardMeter) / 100;
+    ctx.fillStyle = '#333333';
+    ctx.fillRect(224, 18, 128, 4);
+    ctx.fillStyle = cpu.guardBreakStun > 0 ? '#FF4444' : '#4488FF';
+    ctx.fillRect(224 + 128 - Math.floor(128 * p2Guard), 18, Math.floor(128 * p2Guard), 4);
+
+    // P1 Ultimate meter (gold, small bar below guard)
+    const p1Ult = player.ultimateMeter / 100;
+    ctx.fillStyle = '#1A1A00';
+    ctx.fillRect(48, 24, 128, 3);
+    ctx.fillStyle = p1Ult >= 1.0 ? '#FFDD00' : '#AA8800';
+    ctx.fillRect(48, 24, Math.floor(128 * p1Ult), 3);
+    if (player.ultimateMeter >= 100 && Math.floor(frameCounter / 8) % 2 === 0) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(48, 24, 128, 3);
+    }
+
+    // P2 Ultimate meter (right-to-left)
+    const p2Ult = cpu.ultimateMeter / 100;
+    ctx.fillStyle = '#1A1A00';
+    ctx.fillRect(224, 24, 128, 3);
+    ctx.fillStyle = p2Ult >= 1.0 ? '#FFDD00' : '#AA8800';
+    ctx.fillRect(224 + 128 - Math.floor(128 * p2Ult), 24, Math.floor(128 * p2Ult), 3);
+    if (cpu.ultimateMeter >= 100 && Math.floor(frameCounter / 8) % 2 === 0) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(224, 24, 128, 3);
+    }
   }
 
   // Keep renderHUD as an alias for backward compatibility
   function renderHUD(ctx, player, cpu, roundTimer) {
     drawHUD(ctx, player, cpu, roundTimer, p1Wins, p2Wins);
+  }
+
+  function renderUltimate(ctx, fighter, opponent) {
+    if (!fighter.ultimateActive) return;
+    const f = fighter.ultimateFrame;
+    const ult = fighter.def.ultimate;
+    if (!ult) return;
+    const colors = ult.colors;
+
+    // Screen flash at activation (first 10 frames)
+    if (f < 10) {
+      const alpha = (10 - f) / 10 * 0.7;
+      ctx.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
+    }
+
+    // Fighter-specific effects (frames 10-80)
+    if (f >= 10 && f < 80) {
+      const name = fighter.def.name;
+      if (name === 'Trump') {
+        const wallX = Math.floor((f - 10) / 70 * GAME_W);
+        ctx.fillStyle = colors[0];
+        ctx.fillRect(wallX - 20, 28, 20, GAME_H - 28);
+        ctx.fillStyle = colors[1];
+        ctx.fillRect(wallX - 16, 28, 4, GAME_H - 28);
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(wallX - 20 + i * 6, 28 + (f * 7 + i * 20) % (GAME_H - 40), 3, 3);
+        }
+      } else if (name === 'Biden') {
+        const waveX = Math.floor((f - 10) / 70 * GAME_W);
+        for (let iy = 40; iy < GAME_H; iy += 16) {
+          ctx.fillStyle = colors[0]; ctx.fillRect(waveX - 24, iy, 10, 10);
+          ctx.fillStyle = colors[1]; ctx.fillRect(waveX - 20, iy - 4, 6, 6);
+        }
+        if (f > 45) {
+          ctx.fillStyle = 'rgba(100,180,255,0.3)';
+          ctx.fillRect(opponent.x - 20, opponent.y - 50, 40, 50);
+        }
+      } else if (name === 'Obama') {
+        if (f < 40) {
+          const rx = opponent.x, ry = opponent.y - 25;
+          const bs = Math.floor((f - 10) * 2);
+          ctx.fillStyle = colors[1];
+          ctx.fillRect(rx - bs, ry - 1, bs * 2, 2);
+          ctx.fillRect(rx - 1, ry - bs, 2, bs * 2);
+          ctx.fillRect(rx - bs, ry - bs, 8, 2); ctx.fillRect(rx - bs, ry - bs, 2, 8);
+          ctx.fillRect(rx + bs - 8, ry - bs, 8, 2); ctx.fillRect(rx + bs - 2, ry - bs, 2, 8);
+        } else {
+          const missileCount = Math.min(5, Math.floor((f - 40) / 8));
+          for (let m = 0; m < missileCount; m++) {
+            const mx = opponent.x - 20 + m * 10;
+            const my = 28 + Math.floor((f - 40 - m * 8) * 3);
+            if (my > 0 && my < GAME_H) {
+              ctx.fillStyle = colors[0]; ctx.fillRect(mx, my, 4, 10);
+              ctx.fillStyle = '#FF4400'; ctx.fillRect(mx, my + 10, 4, 4);
+            }
+          }
+        }
+      } else if (name === 'Bush') {
+        const ballProgress = (f - 10) / 70;
+        const bx = STAGE_LEFT + ballProgress * (STAGE_RIGHT - STAGE_LEFT);
+        const bouncePhase = (ballProgress * 3) % 1;
+        const by = GROUND_Y - 20 - Math.abs(Math.sin(bouncePhase * Math.PI)) * 60;
+        ctx.fillStyle = colors[0]; ctx.fillRect(Math.floor(bx) - 5, Math.floor(by) - 5, 10, 10);
+        ctx.fillStyle = colors[1]; ctx.fillRect(Math.floor(bx) - 3, Math.floor(by) - 3, 6, 6);
+        for (let ft = 1; ft <= 3; ft++) {
+          const tbx = bx - ft * 8 * (fighter.facing);
+          const tby = by + ft * 2;
+          const alpha = 0.6 - ft * 0.15;
+          ctx.fillStyle = 'rgba(255,' + (100 - ft * 30) + ',0,' + alpha + ')';
+          ctx.fillRect(Math.floor(tbx) - 3, Math.floor(tby) - 3, 6, 6);
+        }
+      } else if (name === 'Clinton') {
+        ctx.fillStyle = colors[0];
+        const sx = fighter.x, sy = fighter.y - 30;
+        ctx.fillRect(sx - 8, sy, 16, 24);
+        ctx.fillRect(sx - 4, sy - 8, 8, 10);
+        const noteCount = Math.floor((f - 10) / 10);
+        for (let n = 0; n < Math.min(noteCount, 6); n++) {
+          const nx = sx + (n % 2 === 0 ? -12 : 12) + Math.sin(f * 0.1 + n) * 4;
+          const ny = sy - 20 - n * 12 - (f - 10) * 0.3;
+          if (ny > 28) {
+            ctx.fillStyle = colors[1];
+            ctx.fillRect(Math.floor(nx), Math.floor(ny), 6, 6);
+            ctx.fillRect(Math.floor(nx) + 6, Math.floor(ny) - 6, 2, 8);
+          }
+        }
+        if (f > 30) {
+          ctx.fillStyle = 'rgba(68,136,255,0.25)';
+          ctx.fillRect(opponent.x - 22, opponent.y - 52, 44, 52);
+        }
+      }
+    }
   }
 
   // ===== FIGHT SCENE =====
@@ -2940,6 +3323,12 @@
   let aiController = null;
   let roundSplashTimer = 0;    // Total frames remaining in splash (90 = start, 0 = fighting)
   let roundSplashPhase = '';   // 'round' or 'fight'
+
+  // Wall break state
+  let wallBreakActive = false;
+  let wallBreakTimer = 0;
+  let wallBreakSide = null;   // 'left' or 'right'
+  let stageTier = 1;
 
   // Selection state (set by charSelectScene)
   let selectedP1Def = null;
@@ -2968,6 +3357,18 @@
     hitStopFramesRemaining = 0;
     roundSplashTimer = 0;
     roundSplashPhase = '';
+    // Guard meter reset
+    player.guardMeter = 100;  player.guardBreakStun = 0;
+    cpu.guardMeter = 100;     cpu.guardBreakStun = 0;
+    // Ultimate reset
+    player.ultimateMeter = 0;  player.ultimateActive = false;  player.ultimateFrame = 0;
+    cpu.ultimateMeter = 0;     cpu.ultimateActive = false;     cpu.ultimateFrame = 0;
+    // Wall break reset
+    wallBreakActive = false;
+    wallBreakTimer = 0;
+    wallBreakSide = null;
+    stageTier = 1;
+    if (currentStage) initStage(STAGE_LOOKUP[selectedStage] || STAGES.whiteHouse);
   }
 
   // ===== CHARACTER SELECT SCENE =====
@@ -3201,6 +3602,11 @@
       aiController = createAIController(selectedDifficulty);
       roundSplashTimer = 90;
       roundSplashPhase = 'round';
+      stageTier = 1;
+      wallBreakActive = false;
+      wallBreakTimer = 0;
+      wallBreakSide = null;
+      startBGMusic(selectedStage);
     },
     update(input) {
       // Round splash: block ALL input and game updates
@@ -3269,17 +3675,49 @@
       if (checkHit(player, cpu)) resolveHit(player, cpu);
       if (checkHit(cpu, player)) resolveHit(cpu, player);
 
+      // Wall break detection
+      checkWallBreak(player, cpu);
+      checkWallBreak(cpu, player);
+
+      // Ultimate damage at midpoint of animation
+      if (player.ultimateActive && player.ultimateFrame === 45) {
+        applyUltimateDamage(player, cpu);
+      }
+      if (cpu.ultimateActive && cpu.ultimateFrame === 45) {
+        applyUltimateDamage(cpu, player);
+      }
+
+      // Wall break slow-mo and transition
+      if (wallBreakActive) {
+        if (wallBreakTimer > 0) {
+          wallBreakTimer--;
+        } else {
+          wallBreakActive = false;
+          stageTier = 2;
+          initStageTier2(STAGE_LOOKUP[selectedStage] || STAGES.whiteHouse);
+          playSFX('wallBreak');
+          // Bonus damage to the fighter who was near the wall
+          if (wallBreakSide === 'right') {
+            cpu.health = Math.max(0, cpu.health - 50);
+          } else {
+            player.health = Math.max(0, player.health - 50);
+          }
+        }
+      }
+
       // KO / round-end detection
       if (player.health <= 0) {
         koTriggered = true;
         koSplashTimer = 90;
         roundWinner = 'cpu';
+        playSFX('ko');
         return null;
       }
       if (cpu.health <= 0) {
         koTriggered = true;
         koSplashTimer = 90;
         roundWinner = 'player';
+        playSFX('ko');
         return null;
       }
       if (roundTimer <= 0) {
@@ -3287,6 +3725,7 @@
         koTriggered = true;
         koSplashTimer = 90;
         roundWinner = (player.health / player.def.stats.health) >= (cpu.health / cpu.def.stats.health) ? 'player' : 'cpu';
+        playSFX('ko');
         return null;
       }
 
@@ -3345,6 +3784,28 @@
           drawText(ctx, 'PRESS ENTER TO CONTINUE', 200, 135, '#FFFFFF', 8, 'center');
         }
       }
+
+      // Ultimate animations
+      if (player && cpu) {
+        renderUltimate(ctx, player, cpu);
+        renderUltimate(ctx, cpu, player);
+      }
+
+      // Wall break effect: flash + crack overlay
+      if (wallBreakActive && wallBreakTimer > 0) {
+        const flashAlpha = (wallBreakTimer / 30) * 0.8;
+        ctx.fillStyle = 'rgba(255,255,255,' + flashAlpha + ')';
+        ctx.fillRect(0, 0, GAME_W, GAME_H);
+        const crackX = wallBreakSide === 'right' ? GAME_W : 0;
+        ctx.fillStyle = '#000000';
+        for (let i = 0; i < 5; i++) {
+          const angle = (Math.PI / 6) * i - Math.PI / 3;
+          const len = 30 + i * 15;
+          const ex = Math.floor(crackX + Math.cos(angle) * len * (wallBreakSide === 'right' ? -1 : 1));
+          const ey = Math.floor(GAME_H / 2 + Math.sin(angle) * len);
+          ctx.fillRect(Math.min(crackX, ex), Math.min(GAME_H / 2, ey), Math.abs(crackX - ex) + 2, 2);
+        }
+      }
     }
   };
 
@@ -3359,6 +3820,7 @@
       this._winner = winner || 'TRUMP';
       this._winnerDef = p1Wins >= 2 ? (selectedP1Def || TRUMP) : (selectedP2Def || BIDEN);
       this._loserDef = p1Wins >= 2 ? (selectedP2Def || BIDEN) : (selectedP1Def || TRUMP);
+      stopBGMusic();
     },
     update(input) {
       this._frameCount++;
@@ -3700,6 +4162,26 @@
         // Baseboard (lighter strip)
         octx.fillStyle = '#A08040';
         octx.fillRect(0, 192, GAME_W, 2);
+      },
+      drawTier2: function(octx) {
+        // Rose Garden exterior
+        octx.fillStyle = '#6AB8FF'; octx.fillRect(0, 0, GAME_W, 100);
+        octx.fillStyle = '#87CEEB'; octx.fillRect(0, 80, GAME_W, 30);
+        octx.fillStyle = '#F5F5F5'; octx.fillRect(0, 50, GAME_W, 80);
+        octx.fillStyle = '#DDDDDD'; octx.fillRect(0, 50, GAME_W, 4);
+        octx.fillStyle = '#EEEEEE';
+        for (let c = 20; c < GAME_W - 20; c += 40) { octx.fillRect(c, 50, 10, 80); }
+        octx.fillStyle = '#2E6B2E';
+        for (let rb = 0; rb < GAME_W; rb += 30) {
+          octx.fillRect(rb, 120, 20, 20);
+          octx.fillStyle = '#CC2244'; octx.fillRect(rb + 2, 116, 6, 6); octx.fillRect(rb + 10, 113, 6, 6);
+          octx.fillStyle = '#2E6B2E';
+        }
+        octx.fillStyle = '#8B7355'; octx.fillRect(0, GROUND_Y, GAME_W, GAME_H - GROUND_Y);
+        octx.fillStyle = '#7A6245';
+        for (let px = 0; px < GAME_W; px += 20) { octx.fillRect(px, GROUND_Y, 10, GAME_H - GROUND_Y); }
+        octx.fillStyle = '#4CAF50'; octx.fillRect(0, GROUND_Y - 4, 40, 8);
+        octx.fillStyle = '#4CAF50'; octx.fillRect(GAME_W - 40, GROUND_Y - 4, 40, 8);
       }
     },
     greekIsland: {
@@ -3746,6 +4228,20 @@
         for (let gy = GROUND_Y; gy < GAME_H; gy += 16) { octx.fillRect(0, gy, GAME_W, 1); }
         // Horizon line
         octx.fillStyle = '#FFFFFF'; octx.fillRect(0, 119, GAME_W, 1);
+      },
+      drawTier2: function(octx) {
+        // Beach
+        octx.fillStyle = '#87CEEB'; octx.fillRect(0, 0, GAME_W, 80);
+        octx.fillStyle = '#1E5799'; octx.fillRect(0, 80, GAME_W, 60);
+        octx.fillStyle = '#4488CC'; octx.fillRect(0, 90, GAME_W, 30);
+        octx.fillStyle = '#FFFFFF';
+        for (let wx = 0; wx < GAME_W; wx += 24) { octx.fillRect(wx, 118, 14, 3); }
+        octx.fillStyle = '#E8D4A0'; octx.fillRect(0, 140, GAME_W, 52);
+        octx.fillStyle = '#D4BE8A'; octx.fillRect(0, 152, GAME_W, 6);
+        octx.fillStyle = '#CC2222'; octx.fillRect(60, 130, 30, 4); octx.fillStyle = '#666666'; octx.fillRect(73, 134, 2, 18);
+        octx.fillStyle = '#2244CC'; octx.fillRect(280, 130, 30, 4); octx.fillStyle = '#666666'; octx.fillRect(293, 134, 2, 18);
+        octx.fillStyle = '#C4A870'; octx.fillRect(0, GROUND_Y, GAME_W, GAME_H - GROUND_Y);
+        octx.fillStyle = '#B89860'; octx.fillRect(0, GROUND_Y + 6, GAME_W, GAME_H - GROUND_Y - 6);
       }
     },
     marALago: {
@@ -3801,6 +4297,22 @@
           }
         }
         octx.fillStyle = '#C4A35A'; octx.fillRect(0, GROUND_Y, GAME_W, 2);
+      },
+      drawTier2: function(octx) {
+        // Pool/Patio dusk
+        octx.fillStyle = '#FF9944'; octx.fillRect(0, 0, GAME_W, 60);
+        octx.fillStyle = '#FF6633'; octx.fillRect(0, 50, GAME_W, 40);
+        octx.fillStyle = '#CC3311'; octx.fillRect(0, 80, GAME_W, 30);
+        octx.fillStyle = '#C4A35A'; octx.fillRect(0, 60, GAME_W, 80);
+        octx.fillStyle = '#8B7332'; octx.fillRect(0, 60, GAME_W, 3);
+        octx.fillStyle = '#FFEE88';
+        for (let ww = 30; ww < GAME_W; ww += 50) { octx.fillRect(ww, 70, 20, 14); }
+        octx.fillStyle = '#0099CC'; octx.fillRect(40, GROUND_Y - 20, GAME_W - 80, 20);
+        octx.fillStyle = '#00AADD'; octx.fillRect(44, GROUND_Y - 18, GAME_W - 88, 6);
+        octx.fillStyle = '#F5F5DC'; octx.fillRect(36, GROUND_Y - 22, GAME_W - 72, 4);
+        octx.fillStyle = '#DEB887'; octx.fillRect(0, GROUND_Y, GAME_W, GAME_H - GROUND_Y);
+        octx.fillStyle = '#C8A070';
+        for (let px = 0; px < GAME_W; px += 24) { octx.fillRect(px, GROUND_Y, 1, GAME_H - GROUND_Y); }
       }
     },
     golfCourse: {
@@ -3850,6 +4362,26 @@
         // Flag pin
         octx.fillStyle = '#888888'; octx.fillRect(299, GROUND_Y - 44, 2, 44);
         octx.fillStyle = '#CC0000'; octx.fillRect(301, GROUND_Y - 44, 14, 10);
+      },
+      drawTier2: function(octx) {
+        // Sand Bunker
+        octx.fillStyle = '#87CEEB'; octx.fillRect(0, 0, GAME_W, 70);
+        octx.fillStyle = '#FFFFFF'; octx.fillRect(100, 15, 50, 14); octx.fillRect(92, 20, 62, 10);
+        octx.fillStyle = '#DDDDDD'; octx.fillRect(260, 10, 40, 12);
+        octx.fillStyle = '#3E7A3E'; octx.fillRect(0, 70, GAME_W, 80);
+        octx.fillStyle = '#C8A050'; octx.fillRect(0, 130, GAME_W, 20);
+        octx.fillStyle = '#E8D4A0'; octx.fillRect(0, GROUND_Y - 30, GAME_W, 30);
+        octx.fillStyle = '#D4C08A';
+        for (let sx = 0; sx < GAME_W; sx += 15) {
+          for (let sy = GROUND_Y - 28; sy < GROUND_Y; sy += 10) {
+            if ((sx + sy) % 20 === 0) { octx.fillRect(sx, sy, 8, 3); }
+          }
+        }
+        octx.fillStyle = '#2E6B2E'; octx.fillRect(0, GROUND_Y - 34, 30, 6); octx.fillRect(GAME_W - 30, GROUND_Y - 34, 30, 6);
+        octx.fillStyle = '#C8A050'; octx.fillRect(0, GROUND_Y, GAME_W, GAME_H - GROUND_Y);
+        octx.fillStyle = '#B89040'; octx.fillRect(0, GROUND_Y + 8, GAME_W, GAME_H - GROUND_Y - 8);
+        octx.fillStyle = '#888888'; octx.fillRect(199, GROUND_Y - 50, 2, 50);
+        octx.fillStyle = '#CC0000'; octx.fillRect(201, GROUND_Y - 50, 14, 10);
       }
     }
   };
@@ -3876,14 +4408,34 @@
     currentStage = stageDef;
   }
 
+  function initStageTier2(stageDef) {
+    if (!stageDef || !stageDef.drawTier2) return;
+    const oc = document.createElement('canvas');
+    oc.width = GAME_W; oc.height = GAME_H;
+    const octx = oc.getContext('2d');
+    octx.imageSmoothingEnabled = false;
+    stageDef.drawTier2(octx);
+    stageDef.tier2Canvas = oc;
+    // Swap bgCanvas to tier2 so the stage renders the new background
+    stageDef.bgCanvas = oc;
+    currentStage = stageDef;
+  }
+
   // ===== INIT SEQUENCE =====
   window.addEventListener('load', () => {
     resizeCanvas();
     buildLogo();
     initStage(STAGES.whiteHouse);
+    initAudio();
     // Sprite cache initialized in fightScene.enter() when fighters are created
     scenes[currentScene].enter();
     requestAnimationFrame(gameLoop);
+  });
+
+  document.addEventListener('keydown', function resumeAudio() {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
   });
 
   </script>

@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLASH — Arena Fighters</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ═══════════════════════════════════════════════════
+// CONSTANTS & CONFIG
+// ═══════════════════════════════════════════════════
+
+const CANVAS_W = 800;
+const CANVAS_H = 450;
+const GROUND_Y = 370;
+const GRAVITY = 0.55;
+const WALL_BREAK_THRESHOLD = 12;
+const COMBO_WINDOW = 600;
+
+// Movement system
+const DASH_SPEED_MULT = 2;
+const DASH_FRAMES = 10;
+const DASH_COOLDOWN = 15;
+const COYOTE_FRAMES = 6;
+const JUMP_BUFFER_FRAMES = 8;
+const LANDING_LAG = 4;
+
+const CHARACTERS = [
+  {
+    id: "blaze",
+    name: "BLAZE",
+    desc: "Aggressive rushdown fighter",
+    color: "#FF4444",
+    accent: "#FF8800",
+    speed: 5.5,
+    jumpForce: -12,
+    weight: 0.9,
+    accel: 1.2,
+    friction: 0.82,
+    w: 40,
+    h: 60,
+    attacks: {
+      light: { dmg: 5, range: 55, startup: 3, recovery: 6, knockback: 3, hitstun: 10 },
+      heavy: { dmg: 12, range: 65, startup: 8, recovery: 14, knockback: 7, hitstun: 18 },
+      special: { dmg: 18, range: 80, startup: 5, recovery: 18, knockback: 14, hitstun: 22 },
+      aerial: { dmg: 8, range: 50, startup: 4, recovery: 8, knockback: 5, hitstun: 12 },
+    },
+    combos: [
+      { name: "Inferno Rush", inputs: ["light", "light", "heavy"], bonus: 1.3 },
+      { name: "Meteor Strike", inputs: ["light", "heavy", "special"], bonus: 1.5 },
+      { name: "Blaze Combo", inputs: ["light", "light", "light", "special"], bonus: 1.6 },
+    ],
+  },
+  {
+    id: "frost",
+    name: "FROST",
+    desc: "Precise zoner with range",
+    color: "#44AAFF",
+    accent: "#88DDFF",
+    speed: 4.2,
+    jumpForce: -11.5,
+    weight: 1.0,
+    accel: 0.85,
+    friction: 0.87,
+    w: 38,
+    h: 62,
+    attacks: {
+      light: { dmg: 4, range: 60, startup: 4, recovery: 7, knockback: 2, hitstun: 8 },
+      heavy: { dmg: 14, range: 75, startup: 10, recovery: 16, knockback: 8, hitstun: 20 },
+      special: { dmg: 20, range: 95, startup: 7, recovery: 20, knockback: 16, hitstun: 24 },
+      aerial: { dmg: 7, range: 55, startup: 5, recovery: 9, knockback: 4, hitstun: 10 },
+    },
+    combos: [
+      { name: "Frost Bite", inputs: ["light", "light", "heavy"], bonus: 1.3 },
+      { name: "Avalanche", inputs: ["heavy", "heavy", "special"], bonus: 1.6 },
+      { name: "Ice Shatter", inputs: ["light", "heavy", "heavy", "special"], bonus: 1.7 },
+    ],
+  },
+  {
+    id: "venom",
+    name: "VENOM",
+    desc: "Balanced combo monster",
+    color: "#44DD44",
+    accent: "#AAFF44",
+    speed: 4.8,
+    jumpForce: -12.5,
+    weight: 0.85,
+    accel: 1.05,
+    friction: 0.84,
+    w: 36,
+    h: 58,
+    attacks: {
+      light: { dmg: 4, range: 50, startup: 2, recovery: 5, knockback: 2, hitstun: 12 },
+      heavy: { dmg: 10, range: 60, startup: 7, recovery: 12, knockback: 6, hitstun: 16 },
+      special: { dmg: 15, range: 70, startup: 6, recovery: 16, knockback: 12, hitstun: 20 },
+      aerial: { dmg: 6, range: 48, startup: 3, recovery: 7, knockback: 4, hitstun: 14 },
+    },
+    combos: [
+      { name: "Viper Chain", inputs: ["light", "light", "light", "heavy"], bonus: 1.4 },
+      { name: "Toxic Rush", inputs: ["light", "light", "heavy", "special"], bonus: 1.6 },
+      { name: "Death Coil", inputs: ["light", "light", "light", "light", "special"], bonus: 1.8 },
+    ],
+  },
+  {
+    id: "titan",
+    name: "TITAN",
+    desc: "Heavy hitter grappler",
+    color: "#DD8800",
+    accent: "#FFCC44",
+    speed: 3.5,
+    jumpForce: -10,
+    weight: 1.3,
+    accel: 0.55,
+    friction: 0.90,
+    w: 48,
+    h: 66,
+    attacks: {
+      light: { dmg: 6, range: 50, startup: 5, recovery: 8, knockback: 4, hitstun: 10 },
+      heavy: { dmg: 18, range: 60, startup: 12, recovery: 18, knockback: 12, hitstun: 22 },
+      special: { dmg: 25, range: 70, startup: 10, recovery: 22, knockback: 20, hitstun: 26 },
+      aerial: { dmg: 10, range: 52, startup: 6, recovery: 10, knockback: 8, hitstun: 14 },
+    },
+    combos: [
+      { name: "Crush", inputs: ["light", "heavy"], bonus: 1.2 },
+      { name: "Quake Slam", inputs: ["heavy", "special"], bonus: 1.5 },
+      { name: "Titan Wrath", inputs: ["light", "light", "heavy", "special"], bonus: 1.7 },
+    ],
+  },
+];
+
+const MAPS = [
+  {
+    id: "dojo",
+    name: "DOJO",
+    desc: "Traditional training ground",
+    bg: "#1a0a00",
+    floor: "#3a2010",
+    wallColor: "#4a3020",
+    sky: ["#1a0505", "#2a1515"],
+    particles: "ember",
+    details: (ctx) => {
+      ctx.fillStyle = "#2a1808";
+      ctx.fillRect(0, 0, CANVAS_W, 100);
+      for (let i = 0; i < 8; i++) {
+        ctx.fillStyle = "#3a2010";
+        ctx.fillRect(i * 110 + 20, 50, 8, GROUND_Y - 50);
+        ctx.fillStyle = "#4a2a15";
+        ctx.fillRect(i * 110 + 15, 45, 18, 8);
+      }
+      ctx.fillStyle = "#8B0000";
+      ctx.fillRect(380, 80, 40, 200);
+      ctx.fillStyle = "#CC0000";
+      ctx.font = "bold 14px monospace";
+      ctx.textAlign = "center";
+      const chars = "武道場";
+      for (let i = 0; i < chars.length; i++) {
+        ctx.fillText(chars[i], 400, 120 + i * 50);
+      }
+    },
+  },
+  {
+    id: "rooftop",
+    name: "ROOFTOP",
+    desc: "Neon city skyline",
+    bg: "#0a0a1a",
+    floor: "#2a2a3a",
+    wallColor: "#3a3a5a",
+    sky: ["#050510", "#101030"],
+    particles: "rain",
+    details: (ctx) => {
+      const buildings = [
+        { x: 30, w: 60, h: 200 },
+        { x: 120, w: 80, h: 280 },
+        { x: 230, w: 50, h: 150 },
+        { x: 350, w: 90, h: 250 },
+        { x: 500, w: 70, h: 190 },
+        { x: 600, w: 85, h: 300 },
+        { x: 720, w: 55, h: 170 },
+      ];
+      buildings.forEach((b) => {
+        ctx.fillStyle = "#0a0a18";
+        ctx.fillRect(b.x, GROUND_Y - b.h, b.w, b.h);
+        for (let y = GROUND_Y - b.h + 10; y < GROUND_Y - 10; y += 20) {
+          for (let x = b.x + 8; x < b.x + b.w - 8; x += 14) {
+            ctx.fillStyle = Math.random() > 0.4 ? "#FFDD44" : "#224488";
+            ctx.fillRect(x, y, 6, 10);
+          }
+        }
+      });
+      ctx.fillStyle = "#FF00FF22";
+      ctx.fillRect(0, 0, CANVAS_W, 3);
+      ctx.fillStyle = "#00FFFF22";
+      ctx.fillRect(0, GROUND_Y - 2, CANVAS_W, 2);
+    },
+  },
+  {
+    id: "temple",
+    name: "TEMPLE",
+    desc: "Ancient ruins at dusk",
+    bg: "#0a1a0a",
+    floor: "#2a3a2a",
+    wallColor: "#3a4a3a",
+    sky: ["#0a150a", "#152a15"],
+    particles: "leaf",
+    details: (ctx) => {
+      ctx.fillStyle = "#1a2a1a";
+      for (let i = 0; i < 5; i++) {
+        const x = 50 + i * 180;
+        ctx.fillRect(x, GROUND_Y - 180, 12, 180);
+        ctx.fillRect(x - 10, GROUND_Y - 185, 32, 10);
+        ctx.fillRect(x - 5, GROUND_Y - 195, 22, 12);
+      }
+      ctx.fillStyle = "#0a1a0a55";
+      ctx.beginPath();
+      ctx.arc(650, 60, 45, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#2a4a2a33";
+      ctx.beginPath();
+      ctx.arc(650, 60, 40, 0, Math.PI * 2);
+      ctx.fill();
+    },
+  },
+  {
+    id: "volcano",
+    name: "VOLCANO",
+    desc: "Erupting hellscape",
+    bg: "#1a0500",
+    floor: "#3a1a0a",
+    wallColor: "#5a2a10",
+    sky: ["#1a0500", "#2a0a00"],
+    particles: "ember",
+    details: (ctx) => {
+      ctx.fillStyle = "#2a0a00";
+      ctx.beginPath();
+      ctx.moveTo(300, GROUND_Y);
+      ctx.lineTo(400, 40);
+      ctx.lineTo(500, GROUND_Y);
+      ctx.fill();
+      ctx.fillStyle = "#FF440044";
+      ctx.beginPath();
+      ctx.moveTo(370, 80);
+      ctx.lineTo(400, 40);
+      ctx.lineTo(430, 80);
+      ctx.fill();
+      ctx.fillStyle = "#FF220022";
+      for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.arc(350 + Math.random() * 100, 20 + Math.random() * 40, 5 + Math.random() * 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#FF4400";
+      ctx.fillRect(100, GROUND_Y - 5, 150, 5);
+      ctx.fillRect(550, GROUND_Y - 5, 120, 5);
+    },
+  },
+];
+
+// ═══════════════════════════════════════════════════
+// AUDIO ENGINE
+// ═══════════════════════════════════════════════════
+
+class AudioEngine {
+  constructor() {
+    this.ctx = null;
+    this.enabled = true;
+    this.initialized = false;
+    this.bgmGain = null;
+    this.sfxGain = null;
+    this.currentBgm = null;
+    this.bgmNodes = [];
+  }
+
+  init() {
+    if (this.initialized) return;
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.bgmGain = this.ctx.createGain();
+      this.bgmGain.gain.value = 0.15;
+      this.bgmGain.connect(this.ctx.destination);
+      this.sfxGain = this.ctx.createGain();
+      this.sfxGain.gain.value = 0.25;
+      this.sfxGain.connect(this.ctx.destination);
+      this.initialized = true;
+    } catch (e) {}
+  }
+
+  toggle() {
+    this.enabled = !this.enabled;
+    if (this.bgmGain) this.bgmGain.gain.value = this.enabled ? 0.15 : 0;
+    if (this.sfxGain) this.sfxGain.gain.value = this.enabled ? 0.25 : 0;
+    return this.enabled;
+  }
+
+  playNote(freq, dur, type = "square", gain = null) {
+    if (!this.initialized) return;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0.3, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    osc.connect(g);
+    g.connect(gain || this.sfxGain);
+    osc.start();
+    osc.stop(this.ctx.currentTime + dur);
+  }
+
+  playHit(heavy = false) {
+    if (!this.initialized) return;
+    const osc = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(heavy ? 80 : 200, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(heavy ? 30 : 60, this.ctx.currentTime + 0.15);
+    g.gain.setValueAtTime(0.5, this.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+    osc.connect(g);
+    g.connect(this.sfxGain);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.2);
+    if (heavy) {
+      const n = this.ctx.createBufferSource();
+      const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.2, this.ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      n.buffer = buf;
+      const ng = this.ctx.createGain();
+      ng.gain.setValueAtTime(0.3, this.ctx.currentTime);
+      ng.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+      n.connect(ng);
+      ng.connect(this.sfxGain);
+      n.start();
+    }
+  }
+
+  playWallBreak() {
+    if (!this.initialized) return;
+    for (let i = 0; i < 3; i++) {
+      setTimeout(() => {
+        this.playHit(true);
+        this.playNote(40 + i * 10, 0.3, "sawtooth");
+      }, i * 80);
+    }
+  }
+
+  playMenuSelect() {
+    this.playNote(440, 0.08, "square");
+    setTimeout(() => this.playNote(660, 0.12, "square"), 60);
+  }
+
+  playMenuMove() {
+    this.playNote(330, 0.05, "square");
+  }
+
+  stopBgm() {
+    this.bgmNodes.forEach((n) => { try { n.stop(); } catch (e) {} });
+    this.bgmNodes = [];
+    if (this.currentBgm) clearInterval(this.currentBgm);
+    this.currentBgm = null;
+  }
+
+  playMenuBgm() {
+    this.stopBgm();
+    if (!this.initialized) return;
+    const notes = [130.81, 146.83, 164.81, 174.61, 196.0, 220.0, 246.94, 261.63];
+    let idx = 0;
+    const play = () => {
+      const freq = notes[idx % notes.length];
+      this.playNote(freq, 0.4, "triangle", this.bgmGain);
+      this.playNote(freq * 1.5, 0.2, "square", this.bgmGain);
+      idx++;
+    };
+    play();
+    this.currentBgm = setInterval(play, 500);
+  }
+
+  playFightBgm(mapId) {
+    this.stopBgm();
+    if (!this.initialized) return;
+    const patterns = {
+      dojo: [130.81, 0, 164.81, 0, 196.0, 0, 164.81, 0, 130.81, 0, 110, 0, 130.81, 0, 0, 0],
+      rooftop: [220, 0, 220, 277.18, 0, 329.63, 0, 277.18, 220, 0, 196, 0, 220, 0, 0, 0],
+      temple: [164.81, 0, 0, 196, 0, 0, 220, 0, 0, 196, 0, 0, 164.81, 0, 0, 0],
+      volcano: [110, 110, 0, 138.59, 0, 110, 0, 146.83, 0, 110, 110, 0, 98, 0, 0, 0],
+    };
+    const pat = patterns[mapId] || patterns.dojo;
+    let step = 0;
+    const play = () => {
+      const freq = pat[step % pat.length];
+      if (freq > 0) {
+        this.playNote(freq, 0.15, "square", this.bgmGain);
+        this.playNote(freq * 0.5, 0.2, "triangle", this.bgmGain);
+      }
+      step++;
+    };
+    play();
+    this.currentBgm = setInterval(play, 180);
+  }
+
+  playCombo() {
+    this.playNote(523, 0.08, "square");
+    setTimeout(() => this.playNote(659, 0.08, "square"), 50);
+    setTimeout(() => this.playNote(784, 0.15, "square"), 100);
+  }
+
+  playKO() {
+    const notes = [261, 329, 392, 523];
+    notes.forEach((n, i) => setTimeout(() => this.playNote(n, 0.3, "square"), i * 150));
+  }
+}
+
+const audio = new AudioEngine();
+
+// ═══════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════
+
+function FightingGame() {
+  const canvasRef = useRef(null);
+  const gameRef = useRef(null);
+  const keysRef = useRef({});
+  const [screen, setScreen] = useState("title");
+  const [p1Char, setP1Char] = useState(0);
+  const [p2Char, setP2Char] = useState(1);
+  const [selectedMap, setSelectedMap] = useState(0);
+  const [musicOn, setMusicOn] = useState(true);
+  const [selectPhase, setSelectPhase] = useState("character");
+  const [hoverP1, setHoverP1] = useState(0);
+  const [hoverP2, setHoverP2] = useState(1);
+  const [hoverMap, setHoverMap] = useState(0);
+  const [winner, setWinner] = useState(null);
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
+
+  // Game state ref for fight
+  const fightRef = useRef(null);
+
+  const initAudio = useCallback(() => {
+    audio.init();
+    audio.playMenuBgm();
+  }, []);
+
+  // ─── FIGHT LOGIC ───
+  const startFight = useCallback(() => {
+    const c1 = CHARACTERS[p1Char];
+    const c2 = CHARACTERS[p2Char];
+    const mapIdx = selectedMap;
+
+    const createFighter = (char, x, facing) => ({
+      x,
+      y: GROUND_Y - char.h,
+      vx: 0,
+      vy: 0,
+      w: char.w,
+      h: char.h,
+      hp: 100,
+      facing,
+      grounded: true,
+      attacking: false,
+      attackType: null,
+      attackFrame: 0,
+      attackRecovery: 0,
+      hitstun: 0,
+      blockstun: 0,
+      blocking: false,
+      comboInputs: [],
+      comboTimer: 0,
+      currentCombo: null,
+      comboHits: 0,
+      comboDamage: 0,
+      lastHitTime: 0,
+      canAirAction: true,
+      dashTimer: 0,
+      dashDir: 0,
+      // Momentum movement
+      lastTapLeftTime: 0,
+      lastTapRightTime: 0,
+      dashCooldown: 0,
+      dashFrames: 0,
+      isDashing: false,
+      airDashed: false,
+      dashTrail: [],
+      // Coyote & jump buffer
+      coyoteTimer: 0,
+      jumpBuffer: 0,
+      jumpHeld: false,
+      // Landing
+      landingLag: 0,
+      // Prev input (edge detection, unconditionally updated)
+      prevLeft: false,
+      prevRight: false,
+      prevUp: false,
+      anim: { frame: 0, state: "idle" },
+      wallBreakForce: 0,
+      char,
+    });
+
+    fightRef.current = {
+      p1: createFighter(c1, 200, 1),
+      p2: createFighter(c2, 550, -1),
+      mapIdx,
+      mapHistory: [mapIdx],
+      particles: [],
+      screenShake: 0,
+      slowmo: 0,
+      comboDisplay: null,
+      comboDisplayTimer: 0,
+      roundTimer: 99,
+      roundTimerAcc: 0,
+      wallBreakAnim: null,
+      announceText: "FIGHT!",
+      announceTimer: 90,
+      hitSparks: [],
+    };
+
+    audio.stopBgm();
+    audio.playFightBgm(MAPS[mapIdx].id);
+    setScreen("fight");
+    setWinner(null);
+  }, [p1Char, p2Char, selectedMap]);
+
+  // ─── GAME LOOP ───
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let rafId;
+
+    const handleKey = (e, down) => {
+      keysRef.current[e.key.toLowerCase()] = down;
+      if (down && !audio.initialized) initAudio();
+      e.preventDefault();
+    };
+    const kd = (e) => handleKey(e, true);
+    const ku = (e) => handleKey(e, false);
+    window.addEventListener("keydown", kd);
+    window.addEventListener("keyup", ku);
+
+    const loop = () => {
+      if (screenRef.current === "fight" && fightRef.current) {
+        updateFight(ctx);
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("keydown", kd);
+      window.removeEventListener("keyup", ku);
+    };
+  }, []);
+
+  const updateFight = useCallback((ctx) => {
+    const f = fightRef.current;
+    if (!f) return;
+    const keys = keysRef.current;
+    const map = MAPS[f.mapIdx];
+
+    // Slowmo
+    if (f.slowmo > 0) {
+      f.slowmo--;
+      if (f.slowmo % 2 !== 0) {
+        drawFight(ctx, f);
+        return;
+      }
+    }
+
+    // Announce timer
+    if (f.announceTimer > 0) f.announceTimer--;
+
+    // Wall break animation
+    if (f.wallBreakAnim) {
+      f.wallBreakAnim.timer--;
+      if (f.wallBreakAnim.timer <= 0) {
+        const availMaps = MAPS.map((_, i) => i).filter((i) => !f.mapHistory.includes(i));
+        const newIdx = availMaps.length > 0 ? availMaps[Math.floor(Math.random() * availMaps.length)] : Math.floor(Math.random() * MAPS.length);
+        f.mapIdx = newIdx;
+        f.mapHistory.push(newIdx);
+        f.wallBreakAnim = null;
+        f.announceText = "WALL BREAK!";
+        f.announceTimer = 60;
+        const target = f.wallBreakAnim === f.p1 ? f.p1 : f.p2;
+        f.p1.x = 200;
+        f.p2.x = 550;
+        f.p1.vx = 0;
+        f.p2.vx = 0;
+        audio.stopBgm();
+        audio.playFightBgm(MAPS[newIdx].id);
+      }
+      drawFight(ctx, f);
+      return;
+    }
+
+    // Round timer
+    f.roundTimerAcc++;
+    if (f.roundTimerAcc >= 60) {
+      f.roundTimerAcc = 0;
+      f.roundTimer = Math.max(0, f.roundTimer - 1);
+      if (f.roundTimer <= 0) {
+        const w = f.p1.hp >= f.p2.hp ? "P1" : "P2";
+        setWinner(w);
+        setScreen("result");
+        audio.playKO();
+        return;
+      }
+    }
+
+    // Update fighters
+    const updateFighter = (p, otherP, controls) => {
+      if (p.hitstun > 0) {
+        p.hitstun--;
+        p.anim.state = "hitstun";
+      }
+      if (p.blockstun > 0) p.blockstun--;
+
+      // Attack recovery
+      if (p.attackRecovery > 0) {
+        p.attackRecovery--;
+        if (p.attackRecovery <= 0) {
+          p.attacking = false;
+          p.attackType = null;
+        }
+      }
+
+      // Attack startup
+      if (p.attacking && p.attackFrame > 0) {
+        p.attackFrame--;
+        if (p.attackFrame <= 0) {
+          // Hit detection
+          const atk = p.char.attacks[p.attackType];
+          const hitboxX = p.facing > 0 ? p.x + p.w : p.x - atk.range;
+          const hitboxW = atk.range;
+          const hitboxY = p.y;
+          const hitboxH = p.h;
+
+          if (
+            hitboxX < otherP.x + otherP.w &&
+            hitboxX + hitboxW > otherP.x &&
+            hitboxY < otherP.y + otherP.h &&
+            hitboxY + hitboxH > otherP.y &&
+            otherP.hitstun <= 0
+          ) {
+            // Check blocking
+            const isBlocking =
+              otherP.blocking &&
+              otherP.grounded &&
+              ((otherP.facing > 0 && controls !== controlsP1(keys)) ||
+                (otherP.facing < 0 && controls === controlsP1(keys)));
+
+            if (isBlocking) {
+              otherP.blockstun = 8;
+              otherP.vx = p.facing * atk.knockback * 0.3;
+              audio.playNote(200, 0.05, "triangle");
+            } else {
+              // Check combo
+              let dmgMult = 1;
+              const now = Date.now();
+              p.comboInputs.push({ type: p.attackType, time: now });
+              p.comboInputs = p.comboInputs.filter((c) => now - c.time < COMBO_WINDOW * 2);
+
+              for (const combo of p.char.combos) {
+                const inputs = p.comboInputs.slice(-combo.inputs.length).map((c) => c.type);
+                if (inputs.length === combo.inputs.length && inputs.every((inp, i) => inp === combo.inputs[i])) {
+                  dmgMult = combo.bonus;
+                  p.currentCombo = combo.name;
+                  f.comboDisplay = { text: combo.name, x: otherP.x, y: otherP.y - 30 };
+                  f.comboDisplayTimer = 90;
+                  audio.playCombo();
+                  break;
+                }
+              }
+
+              p.comboHits++;
+              const dmg = Math.round(atk.dmg * dmgMult);
+              otherP.hp = Math.max(0, otherP.hp - dmg);
+              otherP.hitstun = atk.hitstun;
+              otherP.vx = p.facing * atk.knockback;
+              if (!otherP.grounded) otherP.vy = -3;
+              p.comboDamage += dmg;
+
+              // Hit effects
+              f.screenShake = Math.min(8, atk.knockback);
+              f.slowmo = atk.knockback > 10 ? 8 : 0;
+
+              const sparkX = otherP.x + otherP.w / 2;
+              const sparkY = otherP.y + otherP.h / 3;
+              for (let i = 0; i < 6; i++) {
+                f.hitSparks.push({
+                  x: sparkX,
+                  y: sparkY,
+                  vx: (Math.random() - 0.5) * 8,
+                  vy: (Math.random() - 0.5) * 8,
+                  life: 15,
+                  color: p.char.color,
+                });
+              }
+
+              audio.playHit(atk.knockback > 8);
+
+              // Wall break check
+              if (otherP.x <= 10 || otherP.x + otherP.w >= CANVAS_W - 10) {
+                otherP.wallBreakForce += atk.knockback;
+                if (otherP.wallBreakForce >= WALL_BREAK_THRESHOLD) {
+                  f.wallBreakAnim = { timer: 40, side: otherP.x < CANVAS_W / 2 ? "left" : "right" };
+                  f.screenShake = 15;
+                  f.slowmo = 20;
+                  otherP.wallBreakForce = 0;
+                  audio.playWallBreak();
+                  for (let i = 0; i < 20; i++) {
+                    f.particles.push({
+                      x: otherP.x < CANVAS_W / 2 ? 0 : CANVAS_W,
+                      y: Math.random() * GROUND_Y,
+                      vx: (otherP.x < CANVAS_W / 2 ? -1 : 1) * (2 + Math.random() * 5),
+                      vy: -2 + Math.random() * 4,
+                      life: 40,
+                      size: 3 + Math.random() * 8,
+                      color: map.wallColor,
+                    });
+                  }
+                }
+              }
+
+              if (otherP.hp <= 0) {
+                const w = otherP === f.p2 ? "P1" : "P2";
+                setWinner(w);
+                setScreen("result");
+                audio.playKO();
+                return;
+              }
+            }
+          }
+          p.attackRecovery = atk.recovery;
+        }
+      }
+
+      const ctrl = controls;
+
+      // ── Per-frame timers (always run, regardless of hitstun) ──
+      if (p.dashCooldown > 0) p.dashCooldown--;
+      if (p.jumpBuffer > 0) p.jumpBuffer--;
+      if (p.landingLag > 0) p.landingLag--;
+      if (p.grounded) {
+        p.coyoteTimer = COYOTE_FRAMES;
+        p.airDashed = false;
+      } else if (p.coyoteTimer > 0) {
+        p.coyoteTimer--;
+      }
+
+      // Fade dash trail afterimages
+      p.dashTrail = p.dashTrail
+        .map(t => ({ ...t, alpha: t.alpha - 0.18 }))
+        .filter(t => t.alpha > 0);
+
+      // ── Double-tap dash ──
+      if (p.hitstun <= 0 && p.dashCooldown <= 0) {
+        const now = Date.now();
+        if (ctrl.left && !p.prevLeft) {
+          if (now - p.lastTapLeftTime < 200 && (p.grounded || !p.airDashed)) {
+            p.vx = -p.char.speed * DASH_SPEED_MULT;
+            p.dashFrames = DASH_FRAMES;
+            p.dashCooldown = DASH_COOLDOWN;
+            if (!p.grounded) p.airDashed = true;
+            p.dashTrail = [];
+          }
+          p.lastTapLeftTime = now;
+        }
+        if (ctrl.right && !p.prevRight) {
+          if (now - p.lastTapRightTime < 200 && (p.grounded || !p.airDashed)) {
+            p.vx = p.char.speed * DASH_SPEED_MULT;
+            p.dashFrames = DASH_FRAMES;
+            p.dashCooldown = DASH_COOLDOWN;
+            if (!p.grounded) p.airDashed = true;
+            p.dashTrail = [];
+          }
+          p.lastTapRightTime = now;
+        }
+      }
+
+      // Dash duration counter — capture afterimage snapshot each active frame
+      if (p.dashFrames > 0) {
+        p.dashFrames--;
+        p.dashTrail.unshift({ x: p.x, y: p.y, w: p.w, h: p.h, alpha: 0.55, color: p.char.color });
+        if (p.dashTrail.length > 4) p.dashTrail.pop();
+        p.isDashing = true;
+      } else {
+        p.isDashing = false;
+      }
+
+      // ── Movement ──
+      if (p.hitstun <= 0 && p.attackRecovery <= 0 && !p.attacking && p.landingLag <= 0) {
+        p.blocking = false;
+
+        if (!p.isDashing) {
+          if (ctrl.left) {
+            const accel = p.grounded ? p.char.accel : p.char.accel * 0.6;
+            p.vx = Math.max(p.vx - accel, -p.char.speed);
+            if (p.facing > 0) p.blocking = true;
+          } else if (ctrl.right) {
+            const accel = p.grounded ? p.char.accel : p.char.accel * 0.6;
+            p.vx = Math.min(p.vx + accel, p.char.speed);
+            if (p.facing < 0) p.blocking = true;
+          }
+        }
+
+        // ── Jump: coyote time + buffer ──
+        const canJump = p.grounded || p.coyoteTimer > 0;
+        if (ctrl.up && !p.prevUp) {
+          if (canJump) {
+            p.vy = p.char.jumpForce;
+            p.grounded = false;
+            p.coyoteTimer = 0;
+            p.canAirAction = true;
+            p.jumpHeld = true;
+          } else if (!p.grounded) {
+            p.jumpBuffer = JUMP_BUFFER_FRAMES;
+          }
+        }
+
+        // ── Attacks ──
+        if (ctrl.light && !p.attacking) {
+          if (p.landingLag > 0) p.landingLag = 0; // landing lag cancel
+          const atkType = !p.grounded ? "aerial" : "light";
+          p.attacking = true;
+          p.attackType = atkType;
+          p.attackFrame = p.char.attacks[atkType].startup;
+          p.anim.state = "attack";
+        } else if (ctrl.heavy && !p.attacking) {
+          const atkType = !p.grounded ? "aerial" : "heavy";
+          p.attacking = true;
+          p.attackType = atkType;
+          p.attackFrame = p.char.attacks[atkType].startup;
+          p.anim.state = "attack";
+        } else if (ctrl.special && !p.attacking) {
+          p.attacking = true;
+          p.attackType = "special";
+          p.attackFrame = p.char.attacks.special.startup;
+          p.anim.state = "attack";
+        }
+      }
+
+      // ── Physics ──
+      if (!p.grounded) {
+        p.vy += GRAVITY * p.char.weight;
+        // Variable jump height: releasing jump early cuts the upward arc in half
+        if (p.jumpHeld && !ctrl.up && p.vy < 0) {
+          p.vy *= 0.5;
+          p.jumpHeld = false;
+        }
+        // Very low air drag — horizontal momentum carries through the full arc
+        if (!p.isDashing) p.vx *= 0.98;
+      }
+
+      p.x += p.vx;
+      p.y += p.vy;
+
+      // ── Ground collision ──
+      if (p.y + p.h >= GROUND_Y) {
+        const wasAirborne = !p.grounded;
+        p.y = GROUND_Y - p.h;
+        p.vy = 0;
+        p.grounded = true;
+        p.canAirAction = true;
+        if (p.hitstun <= 0 && Math.abs(p.vx) < 0.5) p.anim.state = "idle";
+
+        if (wasAirborne) {
+          if (p.jumpBuffer > 0) {
+            // Execute buffered jump immediately on touch-down
+            p.vy = p.char.jumpForce;
+            p.grounded = false;
+            p.canAirAction = true;
+            p.jumpHeld = true;
+            p.jumpBuffer = 0;
+          } else {
+            p.landingLag = LANDING_LAG;
+            // Dust burst at feet
+            for (let di = 0; di < 5; di++) {
+              f.particles.push({
+                x: p.x + p.w / 2 + (Math.random() - 0.5) * p.w * 0.8,
+                y: GROUND_Y,
+                vx: (Math.random() - 0.5) * 2.5,
+                vy: -0.8 - Math.random() * 1.5,
+                life: 18,
+                size: 1.5 + Math.random() * 2,
+                color: "#AAAAAA",
+              });
+            }
+          }
+        }
+      }
+
+      // ── Wall collision ──
+      if (p.x < 5) {
+        p.x = 5;
+        p.vx = 0;
+      }
+      if (p.x + p.w > CANVAS_W - 5) {
+        p.x = CANVAS_W - 5 - p.w;
+        p.vx = 0;
+      }
+
+      // ── Ground deceleration (smooth slide to stop, not instant) ──
+      if (p.grounded && !p.isDashing) {
+        const hasInput = ctrl.left || ctrl.right;
+        if (!hasInput) p.vx *= p.char.friction;
+      }
+
+      // Track prev inputs unconditionally — prevents false edge triggers after hitstun
+      p.prevLeft = ctrl.left;
+      p.prevRight = ctrl.right;
+      p.prevUp = ctrl.up;
+
+      // Face opponent
+      if (p.hitstun <= 0 && !p.attacking) {
+        p.facing = otherP.x > p.x ? 1 : -1;
+      }
+
+      // Decay wall break force
+      p.wallBreakForce *= 0.98;
+
+      // Combo reset
+      if (p.comboInputs.length > 0) {
+        const now = Date.now();
+        if (now - p.comboInputs[p.comboInputs.length - 1].time > COMBO_WINDOW) {
+          p.comboHits = 0;
+          p.comboDamage = 0;
+          p.currentCombo = null;
+        }
+      }
+
+      // Animation
+      p.anim.frame++;
+    };
+
+    const controlsP1 = (k) => ({
+      left: k["a"],
+      right: k["d"],
+      up: k["w"],
+      down: k["s"],
+      light: k["f"],
+      heavy: k["g"],
+      special: k["h"],
+    });
+
+    const controlsP2 = (k) => ({
+      left: k["arrowleft"],
+      right: k["arrowright"],
+      up: k["arrowup"],
+      down: k["arrowdown"],
+      light: k["j"],
+      heavy: k["k"],
+      special: k["l"],
+    });
+
+    const c1 = controlsP1(keys);
+    const c2 = controlsP2(keys);
+
+    updateFighter(f.p1, f.p2, c1);
+    updateFighter(f.p2, f.p1, c2);
+
+    // Update particles
+    f.particles = f.particles.filter((p) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.1;
+      p.life--;
+      return p.life > 0;
+    });
+
+    f.hitSparks = f.hitSparks.filter((s) => {
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life--;
+      return s.life > 0;
+    });
+
+    if (f.screenShake > 0) f.screenShake *= 0.85;
+    if (f.comboDisplayTimer > 0) f.comboDisplayTimer--;
+
+    // Ambient particles
+    if (Math.random() < 0.1) {
+      const type = map.particles;
+      f.particles.push({
+        x: Math.random() * CANVAS_W,
+        y: type === "rain" ? -10 : GROUND_Y,
+        vx: type === "leaf" ? 0.5 + Math.random() : (Math.random() - 0.5) * 0.5,
+        vy: type === "rain" ? 4 + Math.random() * 3 : type === "ember" ? -1 - Math.random() * 2 : -0.5,
+        life: 80,
+        size: type === "rain" ? 1 : 2 + Math.random() * 2,
+        color: type === "ember" ? "#FF6600" : type === "rain" ? "#6688BB" : "#44AA44",
+      });
+    }
+
+    drawFight(ctx, f);
+  }, []);
+
+  // ─── DRAW FIGHT ───
+  const drawFight = (ctx, f) => {
+    const map = MAPS[f.mapIdx];
+    const shakeX = f.screenShake > 0.5 ? (Math.random() - 0.5) * f.screenShake : 0;
+    const shakeY = f.screenShake > 0.5 ? (Math.random() - 0.5) * f.screenShake : 0;
+
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+
+    // Background
+    const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
+    grad.addColorStop(0, map.sky[0]);
+    grad.addColorStop(1, map.sky[1]);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    // Map details
+    map.details(ctx);
+
+    // Floor
+    ctx.fillStyle = map.floor;
+    ctx.fillRect(0, GROUND_Y, CANVAS_W, CANVAS_H - GROUND_Y);
+    ctx.fillStyle = map.wallColor + "88";
+    ctx.fillRect(0, GROUND_Y, CANVAS_W, 3);
+
+    // Walls
+    ctx.fillStyle = map.wallColor;
+    ctx.fillRect(0, 0, 5, GROUND_Y);
+    ctx.fillRect(CANVAS_W - 5, 0, 5, GROUND_Y);
+
+    // Wall break cracks
+    if (f.p1.wallBreakForce > 4 || f.p2.wallBreakForce > 4) {
+      const side = f.p1.x < 50 || f.p2.x < 50 ? "left" : "right";
+      const wx = side === "left" ? 2 : CANVAS_W - 3;
+      ctx.strokeStyle = "#FFFFFF44";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        const cy = 100 + i * 50;
+        ctx.moveTo(wx, cy);
+        ctx.lineTo(wx + (side === "left" ? -8 : 8), cy + 15);
+        ctx.lineTo(wx, cy + 30);
+        ctx.stroke();
+      }
+    }
+
+    // Particles
+    f.particles.forEach((p) => {
+      ctx.globalAlpha = p.life / 80;
+      ctx.fillStyle = p.color;
+      if (p.size <= 1.5) {
+        ctx.fillRect(p.x, p.y, 1, p.size * 4);
+      } else {
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+    });
+    ctx.globalAlpha = 1;
+
+    // Hit sparks
+    f.hitSparks.forEach((s) => {
+      ctx.globalAlpha = s.life / 15;
+      ctx.fillStyle = s.color;
+      ctx.fillRect(s.x - 1, s.y - 1, 3, 3);
+    });
+    ctx.globalAlpha = 1;
+
+    // Draw fighters
+    const drawFighter = (p, isP1) => {
+      // Dash afterimage trail
+      p.dashTrail.forEach(t => {
+        ctx.save();
+        ctx.globalAlpha = t.alpha * 0.7;
+        ctx.fillStyle = t.color;
+        ctx.fillRect(t.x, t.y, t.w, t.h);
+        ctx.restore();
+      });
+
+      ctx.save();
+      ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+      if (p.facing < 0) ctx.scale(-1, 1);
+
+      // Hitstun flash
+      if (p.hitstun > 0 && p.anim.frame % 4 < 2) {
+        ctx.globalAlpha = 0.6;
+      }
+
+      // Body
+      ctx.fillStyle = p.char.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+
+      // Head
+      ctx.fillStyle = p.char.accent;
+      ctx.fillRect(-p.w / 2 + 4, -p.h / 2 + 2, p.w - 8, 16);
+
+      // Eyes
+      ctx.fillStyle = "#FFF";
+      ctx.fillRect(2, -p.h / 2 + 6, 5, 4);
+      ctx.fillRect(10, -p.h / 2 + 6, 5, 4);
+
+      // Limbs based on state
+      if (p.attacking) {
+        // Attack arm
+        ctx.fillStyle = p.char.accent;
+        const atk = p.char.attacks[p.attackType];
+        const ext = p.attackFrame > 0 ? 5 : atk.range * 0.4;
+        ctx.fillRect(p.w / 2, -8, ext, 6);
+        // Fist
+        ctx.fillStyle = p.char.color;
+        ctx.fillRect(p.w / 2 + ext - 2, -10, 8, 10);
+      } else {
+        // Idle arms
+        ctx.fillStyle = p.char.accent;
+        ctx.fillRect(p.w / 2, -4, 8, 5);
+        ctx.fillRect(-p.w / 2 - 8, 0, 8, 5);
+      }
+
+      // Legs
+      ctx.fillStyle = p.char.color + "CC";
+      if (!p.grounded) {
+        ctx.fillRect(-6, p.h / 2, 7, 10);
+        ctx.fillRect(4, p.h / 2, 7, 6);
+      } else if (Math.abs(p.vx) > 1) {
+        const legOff = Math.sin(p.anim.frame * 0.4) * 6;
+        ctx.fillRect(-6, p.h / 2, 7, 8 + legOff);
+        ctx.fillRect(4, p.h / 2, 7, 8 - legOff);
+      } else {
+        ctx.fillRect(-6, p.h / 2, 7, 8);
+        ctx.fillRect(4, p.h / 2, 7, 8);
+      }
+
+      // Blocking indicator
+      if (p.blocking || p.blockstun > 0) {
+        ctx.strokeStyle = "#FFFFFF88";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-p.w / 2 - 3, -p.h / 2 - 3, p.w + 6, p.h + 6);
+      }
+
+      ctx.restore();
+
+      // Name tag
+      ctx.fillStyle = "#FFFFFF88";
+      ctx.font = "bold 10px 'Courier New', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(isP1 ? "P1" : "P2", p.x + p.w / 2, p.y - 8);
+    };
+
+    drawFighter(f.p1, true);
+    drawFighter(f.p2, false);
+
+    // Wall break animation
+    if (f.wallBreakAnim) {
+      const progress = 1 - f.wallBreakAnim.timer / 40;
+      ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - progress)})`;
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    }
+
+    // ─── HUD ───
+    // HP Bars
+    ctx.fillStyle = "#00000088";
+    ctx.fillRect(20, 15, 320, 24);
+    ctx.fillRect(CANVAS_W - 340, 15, 320, 24);
+
+    // P1 HP (left-aligned)
+    const p1HpW = (f.p1.hp / 100) * 310;
+    const p1HpGrad = ctx.createLinearGradient(25, 0, 25 + p1HpW, 0);
+    p1HpGrad.addColorStop(0, f.p1.char.color);
+    p1HpGrad.addColorStop(1, f.p1.char.accent);
+    ctx.fillStyle = p1HpGrad;
+    ctx.fillRect(25, 18, p1HpW, 18);
+
+    // P2 HP (right-aligned)
+    const p2HpW = (f.p2.hp / 100) * 310;
+    const p2HpGrad = ctx.createLinearGradient(CANVAS_W - 25 - p2HpW, 0, CANVAS_W - 25, 0);
+    p2HpGrad.addColorStop(0, f.p2.char.accent);
+    p2HpGrad.addColorStop(1, f.p2.char.color);
+    ctx.fillStyle = p2HpGrad;
+    ctx.fillRect(CANVAS_W - 25 - p2HpW, 18, p2HpW, 18);
+
+    // Names
+    ctx.fillStyle = "#FFF";
+    ctx.font = "bold 12px 'Courier New', monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(f.p1.char.name, 25, 52);
+    ctx.textAlign = "right";
+    ctx.fillText(f.p2.char.name, CANVAS_W - 25, 52);
+
+    // Timer
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#FFF";
+    ctx.font = "bold 28px 'Courier New', monospace";
+    ctx.fillText(String(f.roundTimer).padStart(2, "0"), CANVAS_W / 2, 38);
+
+    // Map name
+    ctx.fillStyle = "#FFFFFF44";
+    ctx.font = "10px 'Courier New', monospace";
+    ctx.fillText(MAPS[f.mapIdx].name, CANVAS_W / 2, 52);
+
+    // Combo display
+    if (f.comboDisplayTimer > 0 && f.comboDisplay) {
+      ctx.globalAlpha = Math.min(1, f.comboDisplayTimer / 30);
+      ctx.fillStyle = "#FFDD00";
+      ctx.font = "bold 18px 'Courier New', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(f.comboDisplay.text, f.comboDisplay.x, f.comboDisplay.y - (90 - f.comboDisplayTimer) * 0.5);
+      ctx.globalAlpha = 1;
+    }
+
+    // Announce text
+    if (f.announceTimer > 0) {
+      ctx.globalAlpha = Math.min(1, f.announceTimer / 30);
+      ctx.fillStyle = "#FFF";
+      ctx.font = "bold 48px 'Courier New', monospace";
+      ctx.textAlign = "center";
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 4;
+      ctx.strokeText(f.announceText, CANVAS_W / 2, CANVAS_H / 2);
+      ctx.fillText(f.announceText, CANVAS_W / 2, CANVAS_H / 2);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+  };
+
+  // ─── MENU SCREENS ───
+  const menuStyle = {
+    position: "absolute", top: 0, left: 0, width: CANVAS_W, height: CANVAS_H,
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    fontFamily: "'Courier New', 'Lucida Console', monospace",
+    pointerEvents: screen === "fight" ? "none" : "auto",
+  };
+
+  return (
+    <div style={{ position: "relative", width: CANVAS_W, height: CANVAS_H, background: "#000", overflow: "hidden", margin: "0 auto", border: "2px solid #333", borderRadius: 4 }}>
+      <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} style={{ display: "block" }} />
+
+      {/* TITLE SCREEN */}
+      {screen === "title" && (
+        <div style={{ ...menuStyle, background: "linear-gradient(180deg, #0a0a0a 0%, #1a0a0a 50%, #0a0a1a 100%)" }}>
+          <div style={{ fontSize: 56, fontWeight: 900, color: "#FF4444", letterSpacing: 8, textShadow: "0 0 30px #FF000066, 0 0 60px #FF000033", marginBottom: 8 }}>
+            CLASH
+          </div>
+          <div style={{ fontSize: 14, color: "#888", letterSpacing: 12, marginBottom: 60 }}>
+            ARENA FIGHTERS
+          </div>
+          <button
+            onClick={() => { initAudio(); setScreen("select"); setSelectPhase("character"); }}
+            style={{
+              background: "none", border: "2px solid #FF4444", color: "#FF4444", padding: "14px 48px",
+              fontSize: 18, fontFamily: "inherit", cursor: "pointer", letterSpacing: 4, fontWeight: 700,
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => { e.target.style.background = "#FF4444"; e.target.style.color = "#000"; audio.playMenuMove(); }}
+            onMouseLeave={(e) => { e.target.style.background = "none"; e.target.style.color = "#FF4444"; }}
+          >
+            START GAME
+          </button>
+          <button
+            onClick={() => { const on = audio.toggle(); setMusicOn(on); }}
+            style={{
+              background: "none", border: "1px solid #555", color: "#888", padding: "8px 24px",
+              fontSize: 12, fontFamily: "inherit", cursor: "pointer", letterSpacing: 2, marginTop: 16,
+            }}
+            onMouseEnter={(e) => { e.target.style.borderColor = "#aaa"; e.target.style.color = "#fff"; }}
+            onMouseLeave={(e) => { e.target.style.borderColor = "#555"; e.target.style.color = "#888"; }}
+          >
+            MUSIC: {musicOn ? "ON" : "OFF"}
+          </button>
+        </div>
+      )}
+
+      {/* CHARACTER SELECT */}
+      {screen === "select" && selectPhase === "character" && (
+        <div style={{ ...menuStyle, background: "linear-gradient(180deg, #0a0a10 0%, #10101a 100%)", padding: 20 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#FFF", letterSpacing: 6, marginBottom: 20 }}>
+            SELECT FIGHTERS
+          </div>
+          <div style={{ display: "flex", gap: 30, marginBottom: 20 }}>
+            {/* P1 Selection */}
+            <div>
+              <div style={{ color: "#FF4444", fontSize: 14, fontWeight: 700, textAlign: "center", marginBottom: 8, letterSpacing: 3 }}>
+                PLAYER 1
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {CHARACTERS.map((c, i) => (
+                  <button
+                    key={c.id}
+                    onClick={() => { setHoverP1(i); setP1Char(i); audio.playMenuMove(); }}
+                    style={{
+                      width: 120, padding: "10px 8px", border: hoverP1 === i ? `2px solid ${c.color}` : "2px solid #333",
+                      background: hoverP1 === i ? c.color + "22" : "#111", color: hoverP1 === i ? c.color : "#888",
+                      fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: 2,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <div style={{ width: 24, height: 24, background: c.color, margin: "0 auto 6px", borderRadius: 2 }} />
+                    {c.name}
+                    <div style={{ fontSize: 9, color: "#666", marginTop: 3, letterSpacing: 0 }}>{c.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* P2 Selection */}
+            <div>
+              <div style={{ color: "#4488FF", fontSize: 14, fontWeight: 700, textAlign: "center", marginBottom: 8, letterSpacing: 3 }}>
+                PLAYER 2
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {CHARACTERS.map((c, i) => (
+                  <button
+                    key={c.id}
+                    onClick={() => { setHoverP2(i); setP2Char(i); audio.playMenuMove(); }}
+                    style={{
+                      width: 120, padding: "10px 8px", border: hoverP2 === i ? `2px solid ${c.color}` : "2px solid #333",
+                      background: hoverP2 === i ? c.color + "22" : "#111", color: hoverP2 === i ? c.color : "#888",
+                      fontFamily: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: 2,
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <div style={{ width: 24, height: 24, background: c.color, margin: "0 auto 6px", borderRadius: 2 }} />
+                    {c.name}
+                    <div style={{ fontSize: 9, color: "#666", marginTop: 3, letterSpacing: 0 }}>{c.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Stats comparison */}
+          <div style={{ display: "flex", gap: 40, marginBottom: 16 }}>
+            {[CHARACTERS[hoverP1], CHARACTERS[hoverP2]].map((c, idx) => (
+              <div key={idx} style={{ color: "#AAA", fontSize: 10, lineHeight: 1.8, letterSpacing: 1 }}>
+                <span style={{ color: c.color, fontWeight: 700 }}>{c.name}</span>
+                {" "} SPD:{c.speed.toFixed(1)} JMP:{Math.abs(c.jumpForce).toFixed(0)} WGT:{c.weight.toFixed(1)}
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => { setSelectPhase("map"); audio.playMenuSelect(); }}
+            style={{
+              background: "#FF4444", border: "none", color: "#FFF", padding: "12px 40px",
+              fontSize: 16, fontFamily: "inherit", cursor: "pointer", letterSpacing: 4, fontWeight: 700,
+            }}
+            onMouseEnter={(e) => e.target.style.background = "#FF6666"}
+            onMouseLeave={(e) => e.target.style.background = "#FF4444"}
+          >
+            SELECT MAP →
+          </button>
+        </div>
+      )}
+
+      {/* MAP SELECT */}
+      {screen === "select" && selectPhase === "map" && (
+        <div style={{ ...menuStyle, background: "linear-gradient(180deg, #0a0a10 0%, #10101a 100%)", padding: 20 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#FFF", letterSpacing: 6, marginBottom: 24 }}>
+            SELECT ARENA
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+            {MAPS.map((m, i) => (
+              <button
+                key={m.id}
+                onClick={() => { setHoverMap(i); setSelectedMap(i); audio.playMenuMove(); }}
+                style={{
+                  width: 180, padding: "14px 12px", border: hoverMap === i ? "2px solid #FFF" : "2px solid #333",
+                  background: hoverMap === i ? m.bg : "#0a0a0a", color: hoverMap === i ? "#FFF" : "#666",
+                  fontFamily: "inherit", fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: 3,
+                  transition: "all 0.15s",
+                }}
+              >
+                <div style={{
+                  width: "100%", height: 40, background: `linear-gradient(${m.sky[0]}, ${m.sky[1]})`,
+                  marginBottom: 8, borderRadius: 2, borderBottom: `3px solid ${m.floor}`,
+                }} />
+                {m.name}
+                <div style={{ fontSize: 10, color: "#888", marginTop: 4, letterSpacing: 0 }}>{m.desc}</div>
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              onClick={() => { setSelectPhase("character"); audio.playMenuMove(); }}
+              style={{
+                background: "none", border: "1px solid #555", color: "#888", padding: "10px 28px",
+                fontSize: 13, fontFamily: "inherit", cursor: "pointer", letterSpacing: 2,
+              }}
+            >
+              ← BACK
+            </button>
+            <button
+              onClick={() => { audio.playMenuSelect(); startFight(); }}
+              style={{
+                background: "#FF4444", border: "none", color: "#FFF", padding: "10px 40px",
+                fontSize: 16, fontFamily: "inherit", cursor: "pointer", letterSpacing: 4, fontWeight: 700,
+              }}
+              onMouseEnter={(e) => e.target.style.background = "#FF6666"}
+              onMouseLeave={(e) => e.target.style.background = "#FF4444"}
+            >
+              FIGHT!
+            </button>
+          </div>
+          <button
+            onClick={() => { const on = audio.toggle(); setMusicOn(on); }}
+            style={{
+              position: "absolute", bottom: 16, right: 20,
+              background: "none", border: "1px solid #444", color: "#666", padding: "4px 14px",
+              fontSize: 10, fontFamily: "inherit", cursor: "pointer", letterSpacing: 1,
+            }}
+          >
+            MUSIC: {musicOn ? "ON" : "OFF"}
+          </button>
+        </div>
+      )}
+
+      {/* RESULT SCREEN */}
+      {screen === "result" && (
+        <div style={{ ...menuStyle, background: "rgba(0,0,0,0.85)" }}>
+          <div style={{ fontSize: 48, fontWeight: 900, color: "#FFDD00", letterSpacing: 6, textShadow: "0 0 30px #FFDD0044", marginBottom: 8 }}>
+            K.O.
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 700, color: "#FFF", letterSpacing: 4, marginBottom: 40 }}>
+            {winner === "P1" ? CHARACTERS[p1Char].name : CHARACTERS[p2Char].name} WINS
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              onClick={() => { startFight(); }}
+              style={{
+                background: "#FF4444", border: "none", color: "#FFF", padding: "12px 36px",
+                fontSize: 15, fontFamily: "inherit", cursor: "pointer", letterSpacing: 3, fontWeight: 700,
+              }}
+            >
+              REMATCH
+            </button>
+            <button
+              onClick={() => { audio.stopBgm(); audio.playMenuBgm(); setScreen("select"); setSelectPhase("character"); }}
+              style={{
+                background: "none", border: "2px solid #555", color: "#AAA", padding: "12px 36px",
+                fontSize: 15, fontFamily: "inherit", cursor: "pointer", letterSpacing: 3,
+              }}
+            >
+              NEW GAME
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Music toggle during fight */}
+      {screen === "fight" && (
+        <button
+          onClick={() => { const on = audio.toggle(); setMusicOn(on); }}
+          style={{
+            position: "absolute", top: 58, right: 8, pointerEvents: "auto",
+            background: "none", border: "1px solid #333", color: "#555", padding: "2px 8px",
+            fontSize: 9, fontFamily: "'Courier New', monospace", cursor: "pointer",
+          }}
+        >
+          ♪ {musicOn ? "ON" : "OFF"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<FightingGame />);
+  </script>
+</body>
+</html>

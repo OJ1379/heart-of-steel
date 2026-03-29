@@ -1022,6 +1022,960 @@
     }
   };
 
+  // ===== OBAMA FIGHTER =====
+  function drawObamaBase(c, offsetY, crouchFactor, armState, legState) {
+    // armState: 0=sides, 1=up, 2=guard, 3=punch, 4=windup, 5=swing, 6=recoil
+    // legState: 0=stand, 1=stride-a, 2=stride-b, 3=jump-tuck, 4=land, 5=crouch
+    const oy = offsetY || 0;
+    const cf = crouchFactor || 0;
+
+    const bodyBot = 56;
+    const standH = 52;
+    const crouchH = 34;
+    const bodyH = Math.floor(standH - (standH - crouchH) * cf);
+    const bodyTop = bodyBot - bodyH + oy;
+
+    const headH = Math.floor(bodyH * 0.28);
+    const torsoH = Math.floor(bodyH * 0.34);
+    const legH = bodyH - headH - torsoH;
+
+    const headTop = bodyTop;
+    const torsoTop = headTop + headH;
+    const legTop = torsoTop + torsoH;
+
+    // Obama color palette
+    const skinPri = '#8B6340';
+    const skinSec = '#6B4420';
+    const suitPri = '#1A1A2A';
+    const suitSec = '#0D0D15';
+    const shirt = '#EEEEEE';
+    const hairCol = '#111111';
+    const shoe = '#1A1A1A';
+    const outline = '#000000';
+
+    // === SHOES / LEGS ===
+    if (legState === 0) {
+      c.fillStyle = suitPri;
+      c.fillRect(22, legTop, 7, legH - 4);
+      c.fillRect(35, legTop, 7, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(20, legTop + legH - 4, 9, 4);
+      c.fillRect(33, legTop + legH - 4, 9, 4);
+    } else if (legState === 1) {
+      c.fillStyle = suitPri;
+      c.fillRect(19, legTop, 7, legH - 4);
+      c.fillRect(36, legTop + 2, 7, legH - 6);
+      c.fillStyle = shoe;
+      c.fillRect(17, legTop + legH - 4, 9, 4);
+      c.fillRect(34, legTop + legH - 6, 9, 4);
+    } else if (legState === 2) {
+      c.fillStyle = suitPri;
+      c.fillRect(21, legTop + 2, 7, legH - 6);
+      c.fillRect(34, legTop, 7, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(19, legTop + legH - 6, 9, 4);
+      c.fillRect(32, legTop + legH - 4, 9, 4);
+    } else if (legState === 3) {
+      const tuck = Math.floor(legH * 0.4);
+      c.fillStyle = suitPri;
+      c.fillRect(20, legTop + tuck, 8, legH - tuck - 2);
+      c.fillRect(34, legTop + tuck, 8, legH - tuck - 2);
+      c.fillStyle = shoe;
+      c.fillRect(19, legTop + legH - 2, 9, 3);
+      c.fillRect(33, legTop + legH - 2, 9, 3);
+    } else if (legState === 4) {
+      c.fillStyle = suitPri;
+      c.fillRect(18, legTop, 8, legH - 4);
+      c.fillRect(36, legTop, 8, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(16, legTop + legH - 4, 10, 4);
+      c.fillRect(34, legTop + legH - 4, 10, 4);
+    } else if (legState === 5) {
+      c.fillStyle = suitPri;
+      c.fillRect(22, legTop, 7, legH - 2);
+      c.fillRect(35, legTop, 7, legH - 2);
+      c.fillStyle = shoe;
+      c.fillRect(20, legTop + legH - 2, 9, 3);
+      c.fillRect(33, legTop + legH - 2, 9, 3);
+    }
+
+    // === TORSO (suit) === (22px wide — slim)
+    c.fillStyle = suitPri;
+    c.fillRect(21, torsoTop, 22, torsoH);
+    // Suit lapels
+    c.fillStyle = suitSec;
+    c.fillRect(21, torsoTop, 4, torsoH);
+    c.fillRect(39, torsoTop, 4, torsoH);
+    // Shirt collar visible (open collar, no tie)
+    c.fillStyle = shirt;
+    c.fillRect(29, torsoTop, 6, Math.floor(torsoH * 0.5));
+
+    // === ARMS ===
+    if (armState === 0) {
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);
+      c.fillRect(44, torsoTop + 2, 6, torsoH - 4);
+      c.fillStyle = skinPri;
+      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);
+      c.fillRect(44, torsoTop + torsoH - 6, 6, 6);
+    } else if (armState === 1) {
+      c.fillStyle = suitPri;
+      c.fillRect(12, torsoTop - 6, 6, torsoH - 2);
+      c.fillRect(46, torsoTop - 6, 6, torsoH - 2);
+      c.fillStyle = skinPri;
+      c.fillRect(12, torsoTop - 10, 6, 6);
+      c.fillRect(46, torsoTop - 10, 6, 6);
+    } else if (armState === 2) {
+      c.fillStyle = suitPri;
+      c.fillRect(16, torsoTop + 2, 8, 6);
+      c.fillRect(40, torsoTop + 2, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(24, torsoTop + 2, 6, 6);
+      c.fillRect(34, torsoTop + 2, 6, 6);
+    } else if (armState === 3) {
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 6);
+      c.fillStyle = skinPri;
+      c.fillRect(14, torsoTop + torsoH - 8, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(43, torsoTop + 4, 14, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(55, torsoTop + 4, 7, 6);
+    } else if (armState === 4) {
+      c.fillStyle = suitPri;
+      c.fillRect(10, torsoTop - 4, 6, torsoH);
+      c.fillRect(10, torsoTop, 12, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(10, torsoTop - 8, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(43, torsoTop - 2, 6, torsoH - 2);
+      c.fillStyle = skinPri;
+      c.fillRect(43, torsoTop - 6, 6, 6);
+    } else if (armState === 5) {
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);
+      c.fillStyle = skinPri;
+      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(43, torsoTop, 16, 7);
+      c.fillRect(55, torsoTop + 6, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(57, torsoTop + 10, 8, 6);
+    } else if (armState === 6) {
+      c.fillStyle = suitPri;
+      c.fillRect(8, torsoTop, 8, 6);
+      c.fillRect(48, torsoTop, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(6, torsoTop, 6, 6);
+      c.fillRect(50, torsoTop, 6, 6);
+    }
+
+    // === HEAD ===
+    const headCX = 32;
+    const headW = 16;
+    c.fillStyle = outline;
+    c.fillRect(headCX - headW/2 - 1, headTop - 1, headW + 2, headH + 2);
+
+    c.fillStyle = skinPri;
+    c.fillRect(headCX - headW/2, headTop, headW, headH);
+    c.fillStyle = skinSec;
+    c.fillRect(headCX + 2, headTop, headW/2 - 1, headH);
+
+    // EARS — distinctive wide ears
+    c.fillStyle = skinPri;
+    c.fillRect(headCX - headW/2 - 2, headTop + 6, 2, 6);
+    c.fillRect(headCX + headW/2, headTop + 6, 2, 6);
+    c.fillStyle = skinSec;
+    c.fillRect(headCX + headW/2, headTop + 7, 1, 4);
+
+    // HAIR: short black crop
+    c.fillStyle = hairCol;
+    c.fillRect(headCX - headW/2, headTop - 2, headW, 4);
+    c.fillRect(headCX - headW/2 - 1, headTop - 1, 2, 3);
+    c.fillRect(headCX + headW/2 - 1, headTop - 1, 2, 3);
+
+    // EYES
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(headCX - 5, headTop + 5, 4, 3);
+    c.fillRect(headCX + 1, headTop + 5, 4, 3);
+    c.fillStyle = '#1A0A00';
+    c.fillRect(headCX - 4, headTop + 6, 2, 2);
+    c.fillRect(headCX + 2, headTop + 6, 2, 2);
+
+    // Nose
+    c.fillStyle = skinSec;
+    c.fillRect(headCX - 1, headTop + 8, 3, 3);
+
+    // Mouth
+    c.fillStyle = skinSec;
+    c.fillRect(headCX - 3, headTop + headH - 4, 7, 2);
+  }
+
+  function makeObamaFrames(armState, legState, offsetY, crouchFactor) {
+    return function(c) {
+      drawObamaBase(c, offsetY || 0, crouchFactor || 0, armState, legState);
+    };
+  }
+
+  const OBAMA = {
+    name: 'Obama',
+    spriteWidth: 64,
+    spriteHeight: 56,
+    stats: {
+      walkSpeed: 1.6,
+      jumpForce: -7.5,
+      gravity: 0.45,
+      health: 1000,
+      power: 1.1,
+      reach: 1.0,
+      hurtboxWidth: 34,
+      hurtboxHeight: 52,
+      crouchHurtboxHeight: 34
+    },
+    attacks: {
+      fast: {
+        startup: 3, active: 3, recovery: 7,
+        damage: 45, maxChain: 5,
+        hitbox: { x: 18, y: -20, w: 28, h: 14 },
+        hitstun: 10
+      },
+      power: {
+        startup: 10, active: 4, recovery: 16,
+        damage: 120, maxChain: 1,
+        hitbox: { x: 14, y: -26, w: 36, h: 22 },
+        hitstun: 22
+      }
+    },
+    sprites: {
+      idle: [
+        makeObamaFrames(0, 0, 0, 0),
+        makeObamaFrames(0, 0, -1, 0),
+        makeObamaFrames(0, 0, 0, 0),
+        makeObamaFrames(0, 0, 1, 0)
+      ],
+      walkForward: [
+        makeObamaFrames(0, 0, 0, 0),
+        makeObamaFrames(0, 1, 0, 0),
+        makeObamaFrames(0, 0, 0, 0),
+        makeObamaFrames(0, 2, 0, 0)
+      ],
+      walkBack: [
+        makeObamaFrames(0, 0, 0, 0),
+        makeObamaFrames(0, 2, 0, 0),
+        makeObamaFrames(0, 0, 0, 0),
+        makeObamaFrames(0, 1, 0, 0)
+      ],
+      jumpRise: [
+        makeObamaFrames(1, 0, 0, 0),
+        makeObamaFrames(1, 3, -1, 0),
+        makeObamaFrames(1, 3, -2, 0),
+        makeObamaFrames(1, 3, -2, 0)
+      ],
+      jumpFall: [
+        makeObamaFrames(1, 3, 0, 0),
+        makeObamaFrames(0, 3, 0, 0),
+        makeObamaFrames(0, 4, 1, 0),
+        makeObamaFrames(0, 4, 2, 0)
+      ],
+      crouch: [
+        makeObamaFrames(0, 5, 0, 0.25),
+        makeObamaFrames(0, 5, 0, 0.5),
+        makeObamaFrames(0, 5, 0, 0.75),
+        makeObamaFrames(0, 5, 0, 1.0)
+      ],
+      fastAttack: [
+        makeObamaFrames(0, 0, 0, 0),
+        makeObamaFrames(0, 0, 0, 0),
+        makeObamaFrames(3, 0, 0, 0),
+        makeObamaFrames(0, 0, 0, 0)
+      ],
+      powerAttack: [
+        makeObamaFrames(4, 0, 0, 0),
+        makeObamaFrames(4, 0, -1, 0),
+        makeObamaFrames(4, 0, -1, 0),
+        makeObamaFrames(5, 0, 0, 0)
+      ],
+      block: [
+        makeObamaFrames(0, 0, 0, 0),
+        makeObamaFrames(2, 0, 0, 0),
+        makeObamaFrames(2, 0, 0, 0),
+        makeObamaFrames(2, 0, 0, 0)
+      ],
+      hitstun: [
+        makeObamaFrames(6, 0, 0, 0),
+        makeObamaFrames(6, 0, 1, 0),
+        makeObamaFrames(6, 0, 1, 0),
+        makeObamaFrames(6, 0, 0, 0)
+      ],
+      knockdown: [
+        makeObamaFrames(6, 0, 0, 0),
+        function(c) {
+          const suitPri = '#1A1A2A'; const skinPri = '#8B6340';
+          const hairCol = '#111111'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(10, 30, 42, 10);
+          c.fillStyle = skinPri; c.fillRect(8, 26, 14, 10);
+          c.fillStyle = hairCol; c.fillRect(6, 22, 16, 6);
+          c.fillStyle = shoe; c.fillRect(44, 34, 12, 6);
+        },
+        function(c) {
+          const suitPri = '#1A1A2A'; const skinPri = '#8B6340';
+          const hairCol = '#111111'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(8, 38, 44, 8);
+          c.fillStyle = skinPri; c.fillRect(6, 32, 12, 10);
+          c.fillStyle = hairCol; c.fillRect(4, 28, 14, 6);
+          c.fillStyle = shoe; c.fillRect(44, 40, 12, 6);
+        },
+        function(c) {
+          const suitPri = '#1A1A2A'; const skinPri = '#8B6340';
+          const hairCol = '#111111'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(6, 44, 48, 8);
+          c.fillStyle = skinPri; c.fillRect(4, 40, 12, 8);
+          c.fillStyle = hairCol; c.fillRect(2, 36, 14, 6);
+          c.fillStyle = shoe; c.fillRect(46, 46, 10, 6);
+        }
+      ]
+    }
+  };
+
+  // ===== BUSH FIGHTER =====
+  function drawBushBase(c, offsetY, crouchFactor, armState, legState) {
+    const oy = offsetY || 0;
+    const cf = crouchFactor || 0;
+
+    const bodyBot = 56;
+    const standH = 44;
+    const crouchH = 30;
+    const bodyH = Math.floor(standH - (standH - crouchH) * cf);
+    const bodyTop = bodyBot - bodyH + oy;
+
+    const headH = Math.floor(bodyH * 0.30);
+    const torsoH = Math.floor(bodyH * 0.36);
+    const legH = bodyH - headH - torsoH;
+
+    const headTop = bodyTop;
+    const torsoTop = headTop + headH;
+    const legTop = torsoTop + torsoH;
+
+    // Bush color palette
+    const skinPri = '#FFB888';
+    const skinSec = '#E89968';
+    const suitPri = '#6B4420';
+    const suitSec = '#4D2E12';
+    const tiePri = '#CC2222';
+    const tieSec = '#991111';
+    const hairCol = '#C8A060';
+    const shoe = '#1A1A1A';
+    const outline = '#000000';
+
+    // === SHOES / LEGS === (slightly wider stance)
+    if (legState === 0) {
+      c.fillStyle = suitPri;
+      c.fillRect(20, legTop, 9, legH - 4);
+      c.fillRect(35, legTop, 9, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(18, legTop + legH - 4, 11, 4);
+      c.fillRect(33, legTop + legH - 4, 11, 4);
+    } else if (legState === 1) {
+      c.fillStyle = suitPri;
+      c.fillRect(17, legTop, 9, legH - 4);
+      c.fillRect(36, legTop + 2, 9, legH - 6);
+      c.fillStyle = shoe;
+      c.fillRect(15, legTop + legH - 4, 11, 4);
+      c.fillRect(34, legTop + legH - 6, 11, 4);
+    } else if (legState === 2) {
+      c.fillStyle = suitPri;
+      c.fillRect(19, legTop + 2, 9, legH - 6);
+      c.fillRect(36, legTop, 9, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(17, legTop + legH - 6, 11, 4);
+      c.fillRect(34, legTop + legH - 4, 11, 4);
+    } else if (legState === 3) {
+      const tuck = Math.floor(legH * 0.4);
+      c.fillStyle = suitPri;
+      c.fillRect(18, legTop + tuck, 10, legH - tuck - 2);
+      c.fillRect(34, legTop + tuck, 10, legH - tuck - 2);
+      c.fillStyle = shoe;
+      c.fillRect(17, legTop + legH - 2, 11, 3);
+      c.fillRect(33, legTop + legH - 2, 11, 3);
+    } else if (legState === 4) {
+      c.fillStyle = suitPri;
+      c.fillRect(16, legTop, 10, legH - 4);
+      c.fillRect(36, legTop, 10, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(14, legTop + legH - 4, 12, 4);
+      c.fillRect(34, legTop + legH - 4, 12, 4);
+    } else if (legState === 5) {
+      c.fillStyle = suitPri;
+      c.fillRect(20, legTop, 9, legH - 2);
+      c.fillRect(35, legTop, 9, legH - 2);
+      c.fillStyle = shoe;
+      c.fillRect(18, legTop + legH - 2, 11, 3);
+      c.fillRect(33, legTop + legH - 2, 11, 3);
+    }
+
+    // === TORSO (suit) === (26px wide — stocky)
+    c.fillStyle = suitPri;
+    c.fillRect(19, torsoTop, 26, torsoH);
+    // Suit lapels
+    c.fillStyle = suitSec;
+    c.fillRect(19, torsoTop, 4, torsoH);
+    c.fillRect(41, torsoTop, 4, torsoH);
+    // Shirt
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(28, torsoTop, 8, 4);
+    // Tie (red, wider)
+    c.fillStyle = tiePri;
+    c.fillRect(29, torsoTop + 3, 6, Math.floor(torsoH * 0.65));
+    c.fillStyle = tieSec;
+    c.fillRect(30, torsoTop + 3, 3, Math.floor(torsoH * 0.65));
+
+    // === ARMS ===
+    if (armState === 0) {
+      c.fillStyle = suitPri;
+      c.fillRect(12, torsoTop + 2, 7, torsoH - 4);
+      c.fillRect(45, torsoTop + 2, 7, torsoH - 4);
+      c.fillStyle = skinPri;
+      c.fillRect(12, torsoTop + torsoH - 6, 7, 6);
+      c.fillRect(45, torsoTop + torsoH - 6, 7, 6);
+    } else if (armState === 1) {
+      c.fillStyle = suitPri;
+      c.fillRect(10, torsoTop - 6, 7, torsoH - 2);
+      c.fillRect(47, torsoTop - 6, 7, torsoH - 2);
+      c.fillStyle = skinPri;
+      c.fillRect(10, torsoTop - 10, 7, 6);
+      c.fillRect(47, torsoTop - 10, 7, 6);
+    } else if (armState === 2) {
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 9, 6);
+      c.fillRect(41, torsoTop + 2, 9, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(23, torsoTop + 2, 7, 6);
+      c.fillRect(34, torsoTop + 2, 7, 6);
+    } else if (armState === 3) {
+      c.fillStyle = suitPri;
+      c.fillRect(12, torsoTop + 2, 7, torsoH - 6);
+      c.fillStyle = skinPri;
+      c.fillRect(12, torsoTop + torsoH - 8, 7, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(45, torsoTop + 4, 14, 7);
+      c.fillStyle = skinPri;
+      c.fillRect(57, torsoTop + 4, 7, 7);
+    } else if (armState === 4) {
+      c.fillStyle = suitPri;
+      c.fillRect(8, torsoTop - 4, 7, torsoH);
+      c.fillRect(8, torsoTop, 13, 7);
+      c.fillStyle = skinPri;
+      c.fillRect(8, torsoTop - 8, 7, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(45, torsoTop - 2, 7, torsoH - 2);
+      c.fillStyle = skinPri;
+      c.fillRect(45, torsoTop - 6, 7, 6);
+    } else if (armState === 5) {
+      c.fillStyle = suitPri;
+      c.fillRect(12, torsoTop + 2, 7, torsoH - 4);
+      c.fillStyle = skinPri;
+      c.fillRect(12, torsoTop + torsoH - 6, 7, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(45, torsoTop, 16, 8);
+      c.fillRect(57, torsoTop + 7, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(59, torsoTop + 11, 8, 6);
+    } else if (armState === 6) {
+      c.fillStyle = suitPri;
+      c.fillRect(6, torsoTop, 9, 6);
+      c.fillRect(49, torsoTop, 9, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(4, torsoTop, 6, 6);
+      c.fillRect(51, torsoTop, 6, 6);
+    }
+
+    // === HEAD ===
+    const headCX = 32;
+    const headW = 18;
+    c.fillStyle = outline;
+    c.fillRect(headCX - headW/2 - 1, headTop - 1, headW + 2, headH + 2);
+
+    c.fillStyle = skinPri;
+    c.fillRect(headCX - headW/2, headTop, headW, headH);
+    c.fillStyle = skinSec;
+    c.fillRect(headCX + 2, headTop, headW/2 - 1, headH);
+
+    // HAIR: light brown, slightly tousled
+    c.fillStyle = hairCol;
+    c.fillRect(headCX - headW/2, headTop - 3, headW, 5);
+    c.fillRect(headCX - headW/2 - 1, headTop - 2, 3, 4);
+    c.fillRect(headCX + headW/2 - 2, headTop - 3, 5, 4);
+    // Tousled bits
+    c.fillRect(headCX - 2, headTop - 5, 4, 3);
+    c.fillRect(headCX + 3, headTop - 4, 3, 2);
+
+    // EYES (squinting)
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(headCX - 6, headTop + 4, 5, 2);
+    c.fillRect(headCX + 1, headTop + 4, 5, 2);
+    c.fillStyle = '#3A2800';
+    c.fillRect(headCX - 5, headTop + 4, 3, 2);
+    c.fillRect(headCX + 2, headTop + 4, 3, 2);
+    // Squint line above eyes
+    c.fillStyle = skinSec;
+    c.fillRect(headCX - 6, headTop + 3, 5, 1);
+    c.fillRect(headCX + 1, headTop + 3, 5, 1);
+
+    // Nose
+    c.fillStyle = skinSec;
+    c.fillRect(headCX - 1, headTop + 6, 3, 3);
+
+    // Mouth (slight smirk)
+    c.fillStyle = '#CC8866';
+    c.fillRect(headCX - 4, headTop + headH - 4, 9, 2);
+    c.fillStyle = skinSec;
+    c.fillRect(headCX + 2, headTop + headH - 4, 3, 2);
+  }
+
+  function makeBushFrames(armState, legState, offsetY, crouchFactor) {
+    return function(c) {
+      drawBushBase(c, offsetY || 0, crouchFactor || 0, armState, legState);
+    };
+  }
+
+  const BUSH = {
+    name: 'Bush',
+    spriteWidth: 64,
+    spriteHeight: 56,
+    stats: {
+      walkSpeed: 1.5,
+      jumpForce: -7.5,
+      gravity: 0.45,
+      health: 1050,
+      power: 1.15,
+      reach: 1.05,
+      hurtboxWidth: 38,
+      hurtboxHeight: 44,
+      crouchHurtboxHeight: 30
+    },
+    attacks: {
+      fast: {
+        startup: 4, active: 5, recovery: 9,
+        damage: 55, maxChain: 3,
+        hitbox: { x: 20, y: -18, w: 32, h: 16 },
+        hitstun: 12
+      },
+      power: {
+        startup: 11, active: 6, recovery: 17,
+        damage: 140, maxChain: 1,
+        hitbox: { x: 16, y: -26, w: 40, h: 24 },
+        hitstun: 24
+      }
+    },
+    sprites: {
+      idle: [
+        makeBushFrames(0, 0, 0, 0),
+        makeBushFrames(0, 0, -1, 0),
+        makeBushFrames(0, 0, 0, 0),
+        makeBushFrames(0, 0, 1, 0)
+      ],
+      walkForward: [
+        makeBushFrames(0, 0, 0, 0),
+        makeBushFrames(0, 1, 0, 0),
+        makeBushFrames(0, 0, 0, 0),
+        makeBushFrames(0, 2, 0, 0)
+      ],
+      walkBack: [
+        makeBushFrames(0, 0, 0, 0),
+        makeBushFrames(0, 2, 0, 0),
+        makeBushFrames(0, 0, 0, 0),
+        makeBushFrames(0, 1, 0, 0)
+      ],
+      jumpRise: [
+        makeBushFrames(1, 0, 0, 0),
+        makeBushFrames(1, 3, -1, 0),
+        makeBushFrames(1, 3, -2, 0),
+        makeBushFrames(1, 3, -2, 0)
+      ],
+      jumpFall: [
+        makeBushFrames(1, 3, 0, 0),
+        makeBushFrames(0, 3, 0, 0),
+        makeBushFrames(0, 4, 1, 0),
+        makeBushFrames(0, 4, 2, 0)
+      ],
+      crouch: [
+        makeBushFrames(0, 5, 0, 0.25),
+        makeBushFrames(0, 5, 0, 0.5),
+        makeBushFrames(0, 5, 0, 0.75),
+        makeBushFrames(0, 5, 0, 1.0)
+      ],
+      fastAttack: [
+        makeBushFrames(0, 0, 0, 0),
+        makeBushFrames(0, 0, 0, 0),
+        makeBushFrames(3, 0, 0, 0),
+        makeBushFrames(0, 0, 0, 0)
+      ],
+      powerAttack: [
+        makeBushFrames(4, 0, 0, 0),
+        makeBushFrames(4, 0, -1, 0),
+        makeBushFrames(4, 0, -1, 0),
+        makeBushFrames(5, 0, 0, 0)
+      ],
+      block: [
+        makeBushFrames(0, 0, 0, 0),
+        makeBushFrames(2, 0, 0, 0),
+        makeBushFrames(2, 0, 0, 0),
+        makeBushFrames(2, 0, 0, 0)
+      ],
+      hitstun: [
+        makeBushFrames(6, 0, 0, 0),
+        makeBushFrames(6, 0, 1, 0),
+        makeBushFrames(6, 0, 1, 0),
+        makeBushFrames(6, 0, 0, 0)
+      ],
+      knockdown: [
+        makeBushFrames(6, 0, 0, 0),
+        function(c) {
+          const suitPri = '#6B4420'; const skinPri = '#FFB888';
+          const hairCol = '#C8A060'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(10, 32, 44, 10);
+          c.fillStyle = skinPri; c.fillRect(8, 28, 16, 10);
+          c.fillStyle = hairCol; c.fillRect(6, 24, 18, 6);
+          c.fillStyle = shoe; c.fillRect(46, 36, 12, 6);
+        },
+        function(c) {
+          const suitPri = '#6B4420'; const skinPri = '#FFB888';
+          const hairCol = '#C8A060'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(8, 38, 46, 10);
+          c.fillStyle = skinPri; c.fillRect(6, 34, 14, 10);
+          c.fillStyle = hairCol; c.fillRect(4, 30, 16, 6);
+          c.fillStyle = shoe; c.fillRect(46, 42, 12, 6);
+        },
+        function(c) {
+          const suitPri = '#6B4420'; const skinPri = '#FFB888';
+          const hairCol = '#C8A060'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(6, 44, 50, 8);
+          c.fillStyle = skinPri; c.fillRect(4, 40, 14, 8);
+          c.fillStyle = hairCol; c.fillRect(2, 36, 16, 6);
+          c.fillStyle = shoe; c.fillRect(48, 46, 10, 6);
+        }
+      ]
+    }
+  };
+
+  // ===== CLINTON FIGHTER =====
+  function drawClintonBase(c, offsetY, crouchFactor, armState, legState) {
+    const oy = offsetY || 0;
+    const cf = crouchFactor || 0;
+
+    const bodyBot = 56;
+    const standH = 48;
+    const crouchH = 30;
+    const bodyH = Math.floor(standH - (standH - crouchH) * cf);
+    const bodyTop = bodyBot - bodyH + oy;
+
+    const headH = Math.floor(bodyH * 0.29);
+    const torsoH = Math.floor(bodyH * 0.35);
+    const legH = bodyH - headH - torsoH;
+
+    const headTop = bodyTop;
+    const torsoTop = headTop + headH;
+    const legTop = torsoTop + torsoH;
+
+    // Clinton color palette
+    const skinPri = '#FFB888';
+    const skinSec = '#E89968';
+    const suitPri = '#0D1A3A';
+    const suitSec = '#060D20';
+    const tiePri = '#2244AA';
+    const tieSec = '#112288';
+    const hairCol = '#E0E0E0';
+    const shoe = '#1A1A1A';
+    const outline = '#000000';
+
+    // === SHOES / LEGS ===
+    if (legState === 0) {
+      c.fillStyle = suitPri;
+      c.fillRect(22, legTop, 8, legH - 4);
+      c.fillRect(34, legTop, 8, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(20, legTop + legH - 4, 10, 4);
+      c.fillRect(32, legTop + legH - 4, 10, 4);
+    } else if (legState === 1) {
+      c.fillStyle = suitPri;
+      c.fillRect(19, legTop, 8, legH - 4);
+      c.fillRect(35, legTop + 2, 8, legH - 6);
+      c.fillStyle = shoe;
+      c.fillRect(17, legTop + legH - 4, 10, 4);
+      c.fillRect(33, legTop + legH - 6, 10, 4);
+    } else if (legState === 2) {
+      c.fillStyle = suitPri;
+      c.fillRect(21, legTop + 2, 8, legH - 6);
+      c.fillRect(35, legTop, 8, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(19, legTop + legH - 6, 10, 4);
+      c.fillRect(33, legTop + legH - 4, 10, 4);
+    } else if (legState === 3) {
+      const tuck = Math.floor(legH * 0.4);
+      c.fillStyle = suitPri;
+      c.fillRect(20, legTop + tuck, 9, legH - tuck - 2);
+      c.fillRect(34, legTop + tuck, 9, legH - tuck - 2);
+      c.fillStyle = shoe;
+      c.fillRect(19, legTop + legH - 2, 10, 3);
+      c.fillRect(33, legTop + legH - 2, 10, 3);
+    } else if (legState === 4) {
+      c.fillStyle = suitPri;
+      c.fillRect(18, legTop, 9, legH - 4);
+      c.fillRect(35, legTop, 9, legH - 4);
+      c.fillStyle = shoe;
+      c.fillRect(16, legTop + legH - 4, 11, 4);
+      c.fillRect(33, legTop + legH - 4, 11, 4);
+    } else if (legState === 5) {
+      c.fillStyle = suitPri;
+      c.fillRect(22, legTop, 8, legH - 2);
+      c.fillRect(34, legTop, 8, legH - 2);
+      c.fillStyle = shoe;
+      c.fillRect(20, legTop + legH - 2, 10, 3);
+      c.fillRect(32, legTop + legH - 2, 10, 3);
+    }
+
+    // === TORSO (suit) === (22px wide)
+    c.fillStyle = suitPri;
+    c.fillRect(21, torsoTop, 22, torsoH);
+    // Suit lapels
+    c.fillStyle = suitSec;
+    c.fillRect(21, torsoTop, 4, torsoH);
+    c.fillRect(39, torsoTop, 4, torsoH);
+    // Shirt
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(29, torsoTop, 6, 4);
+    // Tie (blue)
+    c.fillStyle = tiePri;
+    c.fillRect(30, torsoTop + 3, 4, Math.floor(torsoH * 0.6));
+    c.fillStyle = tieSec;
+    c.fillRect(31, torsoTop + 3, 2, Math.floor(torsoH * 0.6));
+
+    // === ARMS ===
+    if (armState === 0) {
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);
+      c.fillRect(44, torsoTop + 2, 6, torsoH - 4);
+      c.fillStyle = skinPri;
+      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);
+      c.fillRect(44, torsoTop + torsoH - 6, 6, 6);
+    } else if (armState === 1) {
+      c.fillStyle = suitPri;
+      c.fillRect(12, torsoTop - 6, 6, torsoH - 2);
+      c.fillRect(46, torsoTop - 6, 6, torsoH - 2);
+      c.fillStyle = skinPri;
+      c.fillRect(12, torsoTop - 10, 6, 6);
+      c.fillRect(46, torsoTop - 10, 6, 6);
+    } else if (armState === 2) {
+      c.fillStyle = suitPri;
+      c.fillRect(16, torsoTop + 2, 8, 6);
+      c.fillRect(40, torsoTop + 2, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(24, torsoTop + 2, 6, 6);
+      c.fillRect(34, torsoTop + 2, 6, 6);
+    } else if (armState === 3) {
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 6);
+      c.fillStyle = skinPri;
+      c.fillRect(14, torsoTop + torsoH - 8, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(43, torsoTop + 4, 12, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(53, torsoTop + 4, 7, 6);
+    } else if (armState === 4) {
+      c.fillStyle = suitPri;
+      c.fillRect(10, torsoTop - 4, 6, torsoH);
+      c.fillRect(10, torsoTop, 12, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(10, torsoTop - 8, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(44, torsoTop - 2, 6, torsoH - 2);
+      c.fillStyle = skinPri;
+      c.fillRect(44, torsoTop - 6, 6, 6);
+    } else if (armState === 5) {
+      c.fillStyle = suitPri;
+      c.fillRect(14, torsoTop + 2, 6, torsoH - 4);
+      c.fillStyle = skinPri;
+      c.fillRect(14, torsoTop + torsoH - 6, 6, 6);
+      c.fillStyle = suitPri;
+      c.fillRect(43, torsoTop, 14, 7);
+      c.fillRect(55, torsoTop + 6, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(57, torsoTop + 10, 7, 6);
+    } else if (armState === 6) {
+      c.fillStyle = suitPri;
+      c.fillRect(8, torsoTop, 8, 6);
+      c.fillRect(48, torsoTop, 8, 6);
+      c.fillStyle = skinPri;
+      c.fillRect(6, torsoTop, 6, 6);
+      c.fillRect(50, torsoTop, 6, 6);
+    }
+
+    // === HEAD === (wide jaw — headW+2 on lower portion)
+    const headCX = 32;
+    const headW = 18;
+    c.fillStyle = outline;
+    c.fillRect(headCX - headW/2 - 1, headTop - 1, headW + 2, headH + 2);
+
+    c.fillStyle = skinPri;
+    c.fillRect(headCX - headW/2, headTop, headW, headH);
+    // Wide jaw area
+    c.fillRect(headCX - headW/2 - 1, headTop + Math.floor(headH * 0.5), headW + 2, Math.floor(headH * 0.5));
+    c.fillStyle = skinSec;
+    c.fillRect(headCX + 2, headTop, headW/2 - 1, headH);
+
+    // HAIR: silver, swept back (wider at back of head)
+    c.fillStyle = hairCol;
+    c.fillRect(headCX - headW/2 - 2, headTop - 3, headW + 4, 5);
+    c.fillRect(headCX - headW/2 - 3, headTop - 1, 4, 4); // swept back left
+    c.fillRect(headCX + headW/2 - 1, headTop - 2, 5, 5); // swept back right
+    c.fillStyle = '#B8B8B8';
+    c.fillRect(headCX - headW/2, headTop - 3, headW, 2);
+
+    // EYES
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(headCX - 6, headTop + 4, 5, 3);
+    c.fillRect(headCX + 1, headTop + 4, 5, 3);
+    c.fillStyle = '#3A2000';
+    c.fillRect(headCX - 5, headTop + 5, 3, 2);
+    c.fillRect(headCX + 2, headTop + 5, 3, 2);
+
+    // Nose
+    c.fillStyle = skinSec;
+    c.fillRect(headCX - 1, headTop + 7, 3, 3);
+
+    // Mouth (wide charismatic smile)
+    c.fillStyle = '#CC8866';
+    c.fillRect(headCX - 5, headTop + headH - 4, 11, 2);
+    c.fillStyle = '#FFFFFF';
+    c.fillRect(headCX - 3, headTop + headH - 3, 7, 1);
+  }
+
+  function makeClintonFrames(armState, legState, offsetY, crouchFactor) {
+    return function(c) {
+      drawClintonBase(c, offsetY || 0, crouchFactor || 0, armState, legState);
+    };
+  }
+
+  const CLINTON = {
+    name: 'Clinton',
+    spriteWidth: 64,
+    spriteHeight: 56,
+    stats: {
+      walkSpeed: 2.2,
+      jumpForce: -7.5,
+      gravity: 0.45,
+      health: 850,
+      power: 0.9,
+      reach: 0.95,
+      hurtboxWidth: 32,
+      hurtboxHeight: 48,
+      crouchHurtboxHeight: 30
+    },
+    attacks: {
+      fast: {
+        startup: 3, active: 3, recovery: 6,
+        damage: 40, maxChain: 4,
+        hitbox: { x: 16, y: -18, w: 26, h: 12 },
+        hitstun: 9
+      },
+      power: {
+        startup: 13, active: 4, recovery: 19,
+        damage: 110, maxChain: 1,
+        hitbox: { x: 12, y: -24, w: 32, h: 20 },
+        hitstun: 20
+      }
+    },
+    sprites: {
+      idle: [
+        makeClintonFrames(0, 0, 0, 0),
+        makeClintonFrames(0, 0, -1, 0),
+        makeClintonFrames(0, 0, 0, 0),
+        makeClintonFrames(0, 0, 1, 0)
+      ],
+      walkForward: [
+        makeClintonFrames(0, 0, 0, 0),
+        makeClintonFrames(0, 1, 0, 0),
+        makeClintonFrames(0, 0, 0, 0),
+        makeClintonFrames(0, 2, 0, 0)
+      ],
+      walkBack: [
+        makeClintonFrames(0, 0, 0, 0),
+        makeClintonFrames(0, 2, 0, 0),
+        makeClintonFrames(0, 0, 0, 0),
+        makeClintonFrames(0, 1, 0, 0)
+      ],
+      jumpRise: [
+        makeClintonFrames(1, 0, 0, 0),
+        makeClintonFrames(1, 3, -1, 0),
+        makeClintonFrames(1, 3, -2, 0),
+        makeClintonFrames(1, 3, -2, 0)
+      ],
+      jumpFall: [
+        makeClintonFrames(1, 3, 0, 0),
+        makeClintonFrames(0, 3, 0, 0),
+        makeClintonFrames(0, 4, 1, 0),
+        makeClintonFrames(0, 4, 2, 0)
+      ],
+      crouch: [
+        makeClintonFrames(0, 5, 0, 0.25),
+        makeClintonFrames(0, 5, 0, 0.5),
+        makeClintonFrames(0, 5, 0, 0.75),
+        makeClintonFrames(0, 5, 0, 1.0)
+      ],
+      fastAttack: [
+        makeClintonFrames(0, 0, 0, 0),
+        makeClintonFrames(0, 0, 0, 0),
+        makeClintonFrames(3, 0, 0, 0),
+        makeClintonFrames(0, 0, 0, 0)
+      ],
+      powerAttack: [
+        makeClintonFrames(4, 0, 0, 0),
+        makeClintonFrames(4, 0, -1, 0),
+        makeClintonFrames(4, 0, -1, 0),
+        makeClintonFrames(5, 0, 0, 0)
+      ],
+      block: [
+        makeClintonFrames(0, 0, 0, 0),
+        makeClintonFrames(2, 0, 0, 0),
+        makeClintonFrames(2, 0, 0, 0),
+        makeClintonFrames(2, 0, 0, 0)
+      ],
+      hitstun: [
+        makeClintonFrames(6, 0, 0, 0),
+        makeClintonFrames(6, 0, 1, 0),
+        makeClintonFrames(6, 0, 1, 0),
+        makeClintonFrames(6, 0, 0, 0)
+      ],
+      knockdown: [
+        makeClintonFrames(6, 0, 0, 0),
+        function(c) {
+          const suitPri = '#0D1A3A'; const skinPri = '#FFB888';
+          const hairCol = '#E0E0E0'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(10, 30, 42, 10);
+          c.fillStyle = skinPri; c.fillRect(8, 26, 16, 10);
+          c.fillStyle = hairCol; c.fillRect(6, 22, 20, 6);
+          c.fillStyle = shoe; c.fillRect(44, 34, 12, 6);
+        },
+        function(c) {
+          const suitPri = '#0D1A3A'; const skinPri = '#FFB888';
+          const hairCol = '#E0E0E0'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(8, 38, 44, 8);
+          c.fillStyle = skinPri; c.fillRect(6, 32, 14, 10);
+          c.fillStyle = hairCol; c.fillRect(4, 28, 18, 6);
+          c.fillStyle = shoe; c.fillRect(44, 40, 12, 6);
+        },
+        function(c) {
+          const suitPri = '#0D1A3A'; const skinPri = '#FFB888';
+          const hairCol = '#E0E0E0'; const shoe = '#1A1A1A';
+          c.fillStyle = suitPri; c.fillRect(6, 44, 50, 8);
+          c.fillStyle = skinPri; c.fillRect(4, 40, 14, 8);
+          c.fillStyle = hairCol; c.fillRect(2, 36, 18, 6);
+          c.fillStyle = shoe; c.fillRect(48, 46, 10, 6);
+        }
+      ]
+    }
+  };
+
   // ===== PORTRAIT CACHE =====
   const portraitCache = {};
 
@@ -1108,6 +2062,119 @@
         // Mouth
         ctx.fillStyle = '#CC7744';
         ctx.fillRect(14, 24, 12, 2);
+      } else if (def.name === 'Obama') {
+        // Obama portrait: bust view
+        // Suit/shoulders
+        ctx.fillStyle = '#1A1A2A';
+        ctx.fillRect(4, 26, 32, 22);
+        // Shirt (open collar, no tie)
+        ctx.fillStyle = '#EEEEEE';
+        ctx.fillRect(14, 26, 12, 6);
+        // Skin (face)
+        ctx.fillStyle = '#8B6340';
+        ctx.fillRect(10, 8, 20, 20);
+        ctx.fillStyle = '#6B4420';
+        ctx.fillRect(20, 8, 10, 20);
+        // Hair (short black)
+        ctx.fillStyle = '#111111';
+        ctx.fillRect(8, 2, 24, 8);
+        ctx.fillRect(7, 5, 3, 5);
+        ctx.fillRect(30, 5, 3, 5);
+        // Ears (distinctive wide)
+        ctx.fillStyle = '#8B6340';
+        ctx.fillRect(7, 14, 3, 6);
+        ctx.fillRect(30, 14, 3, 6);
+        // Eyes
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(12, 14, 5, 3);
+        ctx.fillRect(21, 14, 5, 3);
+        ctx.fillStyle = '#1A0A00';
+        ctx.fillRect(13, 15, 3, 2);
+        ctx.fillRect(22, 15, 3, 2);
+        // Nose
+        ctx.fillStyle = '#6B4420';
+        ctx.fillRect(18, 18, 4, 4);
+        // Mouth
+        ctx.fillStyle = '#6B4420';
+        ctx.fillRect(14, 24, 12, 2);
+      } else if (def.name === 'Bush') {
+        // Bush portrait: bust view
+        // Suit/shoulders
+        ctx.fillStyle = '#6B4420';
+        ctx.fillRect(4, 26, 32, 22);
+        // Shirt collar
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(14, 26, 12, 4);
+        // Red tie (wider)
+        ctx.fillStyle = '#CC2222';
+        ctx.fillRect(16, 29, 8, 14);
+        ctx.fillStyle = '#991111';
+        ctx.fillRect(17, 29, 5, 14);
+        // Skin (face)
+        ctx.fillStyle = '#FFB888';
+        ctx.fillRect(10, 8, 20, 20);
+        ctx.fillStyle = '#E89968';
+        ctx.fillRect(20, 8, 10, 20);
+        // Hair (light brown, tousled)
+        ctx.fillStyle = '#C8A060';
+        ctx.fillRect(8, 2, 24, 8);
+        ctx.fillRect(6, 4, 4, 6);
+        ctx.fillRect(30, 2, 5, 5);
+        ctx.fillRect(15, 1, 5, 3);
+        // Squinting eyes
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(12, 14, 5, 2);
+        ctx.fillRect(21, 14, 5, 2);
+        ctx.fillStyle = '#3A2800';
+        ctx.fillRect(13, 14, 3, 2);
+        ctx.fillRect(22, 14, 3, 2);
+        // Nose
+        ctx.fillStyle = '#E89968';
+        ctx.fillRect(18, 18, 4, 4);
+        // Mouth (smirk)
+        ctx.fillStyle = '#CC8866';
+        ctx.fillRect(13, 24, 14, 2);
+      } else if (def.name === 'Clinton') {
+        // Clinton portrait: bust view
+        // Suit/shoulders
+        ctx.fillStyle = '#0D1A3A';
+        ctx.fillRect(4, 26, 32, 22);
+        // Shirt collar
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(14, 26, 12, 4);
+        // Blue tie
+        ctx.fillStyle = '#2244AA';
+        ctx.fillRect(17, 29, 6, 14);
+        ctx.fillStyle = '#112288';
+        ctx.fillRect(18, 29, 3, 14);
+        // Skin (face — wide jaw)
+        ctx.fillStyle = '#FFB888';
+        ctx.fillRect(10, 8, 20, 20);
+        ctx.fillRect(9, 18, 22, 10); // wider jaw
+        ctx.fillStyle = '#E89968';
+        ctx.fillRect(20, 8, 10, 20);
+        // Hair (silver, swept back)
+        ctx.fillStyle = '#E0E0E0';
+        ctx.fillRect(7, 2, 26, 8);
+        ctx.fillRect(5, 4, 4, 6);
+        ctx.fillRect(31, 3, 5, 6);
+        ctx.fillStyle = '#B8B8B8';
+        ctx.fillRect(8, 2, 24, 3);
+        // Eyes
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(12, 14, 5, 3);
+        ctx.fillRect(21, 14, 5, 3);
+        ctx.fillStyle = '#3A2000';
+        ctx.fillRect(13, 15, 3, 2);
+        ctx.fillRect(22, 15, 3, 2);
+        // Nose
+        ctx.fillStyle = '#E89968';
+        ctx.fillRect(18, 18, 4, 4);
+        // Mouth (wide smile)
+        ctx.fillStyle = '#CC8866';
+        ctx.fillRect(12, 24, 16, 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(14, 24, 12, 1);
       }
 
       portraitCache[def.name] = oc;
@@ -1917,9 +2984,9 @@
       this._confirmed = false;
       this._frameCount = 0;
       this._inputCooldown = 0;
-      this._availableFighters = [TRUMP, BIDEN];
+      this._availableFighters = [TRUMP, BIDEN, OBAMA, BUSH, CLINTON];
       if (Object.keys(portraitCache).length === 0) {
-        initPortraitCache([TRUMP, BIDEN]);
+        initPortraitCache([TRUMP, BIDEN, OBAMA, BUSH, CLINTON]);
       }
     },
     update(input) {
@@ -1931,7 +2998,7 @@
         if (input.left && this._cursorPos > 0) {
           this._cursorPos--;
           this._inputCooldown = 12;
-        } else if (input.right && this._cursorPos < 1) {
+        } else if (input.right && this._cursorPos < 4) {
           this._cursorPos++;
           this._inputCooldown = 12;
         }
@@ -1946,7 +3013,8 @@
 
       if (input.enter) {
         selectedP1Def = this._availableFighters[this._cursorPos];
-        selectedP2Def = this._availableFighters.find(function(f) { return f !== selectedP1Def; });
+        const remaining = this._availableFighters.filter(function(f) { return f !== selectedP1Def; });
+        selectedP2Def = remaining[Math.floor(Math.random() * remaining.length)];
         selectedDifficulty = this._difficulty;
         this._confirmed = true;
         return 'stageSelect';
@@ -1968,9 +3036,11 @@
 
       // Portrait cards
       const cardPositions = [
-        { x: 72, y: 40, name: 'Trump', def: TRUMP, locked: false },
-        { x: 172, y: 40, name: 'Biden', def: BIDEN, locked: false },
-        { x: 272, y: 40, name: '???', def: null, locked: true }
+        { x: 80,  y: 40, name: 'Trump',   def: TRUMP,   locked: false },
+        { x: 128, y: 40, name: 'Biden',   def: BIDEN,   locked: false },
+        { x: 176, y: 40, name: 'Obama',   def: OBAMA,   locked: false },
+        { x: 224, y: 40, name: 'Bush',    def: BUSH,    locked: false },
+        { x: 272, y: 40, name: 'Clinton', def: CLINTON, locked: false }
       ];
 
       for (let i = 0; i < cardPositions.length; i++) {
@@ -2011,7 +3081,7 @@
 
       // P1 / CPU badges
       const p1CardX = cardPositions[this._cursorPos].x + 20;
-      const cpuIdx = this._cursorPos === 0 ? 1 : 0;
+      const cpuIdx = (this._cursorPos === 0) ? 1 : 0;
       const cpuCardX = cardPositions[cpuIdx].x + 20;
       drawText(ctx, 'P1', p1CardX, 36, '#00CC00', 8, 'center');
       drawText(ctx, 'CPU', cpuCardX, 36, '#CC0000', 8, 'center');
@@ -2036,17 +3106,76 @@
     }
   };
 
-  // ===== STAGE SELECT SCENE (pass-through, FLW-03 full UI deferred to Phase 3) =====
+  // ===== STAGE SELECT SCENE =====
   const stageSelectScene = {
+    _cursorPos: 0,
+    _frameCount: 0,
+    _inputCooldown: 0,
+    _thumbnails: null,
+    _stageKeys:  ['white-house', 'greek-island', 'mar-a-lago', 'golf-course'],
+    _stageNames: ['White House', 'Greek Island', 'Mar-a-Lago', 'Golf Course'],
     enter() {
-      selectedStage = 'white-house';
+      this._cursorPos = 0;
+      this._frameCount = 0;
+      this._inputCooldown = 0;
+      if (!this._thumbnails) {
+        this._thumbnails = {};
+        for (let i = 0; i < this._stageKeys.length; i++) {
+          const key = this._stageKeys[i];
+          const stageDef = STAGE_LOOKUP[key];
+          const tc = document.createElement('canvas');
+          tc.width = 80; tc.height = 48;
+          const tctx = tc.getContext('2d');
+          tctx.imageSmoothingEnabled = false;
+          tctx.save();
+          tctx.scale(80 / GAME_W, 48 / GAME_H);
+          stageDef.draw(tctx);
+          tctx.restore();
+          this._thumbnails[key] = tc;
+        }
+      }
     },
     update(input) {
-      return 'fight';
+      this._frameCount++;
+      if (this._inputCooldown > 0) this._inputCooldown--;
+      if (this._inputCooldown === 0) {
+        if (input.left  && this._cursorPos > 0) { this._cursorPos--; this._inputCooldown = 12; }
+        if (input.right && this._cursorPos < 3) { this._cursorPos++; this._inputCooldown = 12; }
+      }
+      if (input.enter) {
+        selectedStage = this._stageKeys[this._cursorPos];
+        return 'fight';
+      }
+      if (keys['Escape']) return 'charSelect';
+      return null;
     },
     render(ctx) {
       ctx.fillStyle = '#0A0A2A';
       ctx.fillRect(0, 0, 400, 240);
+      drawText(ctx, 'SELECT STAGE', 200, 14, '#FFFFFF', 12, 'center');
+      for (let i = 0; i < 4; i++) {
+        const key = this._stageKeys[i];
+        const cx = 16 + i * 88;
+        const cy = 60;
+        const isSelected = (i === this._cursorPos);
+        if (isSelected) {
+          ctx.fillStyle = 'rgba(255,204,0,0.3)';
+          ctx.fillRect(cx - 3, cy - 3, 86, 54);
+        }
+        ctx.fillStyle = isSelected ? '#FFCC00' : '#444466';
+        ctx.fillRect(cx - 2, cy - 2, 84, 52);
+        if (this._thumbnails && this._thumbnails[key]) {
+          ctx.drawImage(this._thumbnails[key], cx, cy);
+        } else {
+          ctx.fillStyle = '#1A1A3A';
+          ctx.fillRect(cx, cy, 80, 48);
+        }
+        drawText(ctx, this._stageNames[i], cx + 40, 118, isSelected ? '#FFCC00' : '#AAAAAA', 7, 'center');
+      }
+      drawText(ctx, this._stageNames[this._cursorPos], 200, 145, '#FFFFFF', 10, 'center');
+      drawText(ctx, '< LEFT / RIGHT >', 200, 165, '#666688', 7, 'center');
+      const showPrompt = Math.floor(this._frameCount / 30) % 2 === 0;
+      if (showPrompt) drawText(ctx, 'PRESS ENTER TO CONFIRM', 200, 220, '#FFFFFF', 8, 'center');
     }
   };
 
@@ -2067,6 +3196,7 @@
       attackHeldFrames = 0;
       prevAttack = false;
       inputBuffer.length = 0;
+      initStage(STAGE_LOOKUP[selectedStage] || STAGES.whiteHouse);
       initSpriteCache([selectedP1Def || TRUMP, selectedP2Def || BIDEN]);
       aiController = createAIController(selectedDifficulty);
       roundSplashTimer = 90;
@@ -2571,7 +3701,165 @@
         octx.fillStyle = '#A08040';
         octx.fillRect(0, 192, GAME_W, 2);
       }
+    },
+    greekIsland: {
+      name: 'Greek Island',
+      bounds: { left: STAGE_LEFT, right: STAGE_RIGHT },
+      groundY: GROUND_Y,
+      bgCanvas: null,
+      draw: function(octx) {
+        // Sky — deep blue gradient effect via layered rects
+        octx.fillStyle = '#87CEEB'; octx.fillRect(0, 0, GAME_W, 60);
+        octx.fillStyle = '#6AB8E8'; octx.fillRect(0, 60, GAME_W, 30);
+        octx.fillStyle = '#4DA6FF'; octx.fillRect(0, 90, GAME_W, 30);
+        // Sea
+        octx.fillStyle = '#1E5799'; octx.fillRect(0, 120, GAME_W, 30);
+        octx.fillStyle = '#0D3B66'; octx.fillRect(0, 145, GAME_W, 20);
+        // Wave lines
+        octx.fillStyle = '#AACCEE';
+        for (let wy = 122; wy < 148; wy += 5) { octx.fillRect(0, wy, GAME_W, 1); }
+        // Left cliff
+        octx.fillStyle = '#C4A35A'; octx.fillRect(0, 80, 70, 112);
+        octx.fillStyle = '#8B7332'; octx.fillRect(0, 80, 70, 4);
+        // Right cliff
+        octx.fillStyle = '#C4A35A'; octx.fillRect(330, 80, 70, 112);
+        octx.fillStyle = '#8B7332'; octx.fillRect(330, 80, 70, 4);
+        // Left white building
+        octx.fillStyle = '#F5F5F5'; octx.fillRect(4, 40, 60, 46);
+        octx.fillStyle = '#1E4D8C'; octx.fillRect(12, 35, 30, 12); // dome
+        octx.fillStyle = '#1E4D8C'; octx.fillRect(6, 62, 8, 10); octx.fillRect(20, 62, 8, 10); // windows
+        // Right white building
+        octx.fillStyle = '#F5F5F5'; octx.fillRect(336, 40, 60, 46);
+        octx.fillStyle = '#1E4D8C'; octx.fillRect(350, 35, 28, 12); // dome
+        octx.fillStyle = '#1E4D8C'; octx.fillRect(340, 62, 8, 10); octx.fillRect(356, 62, 8, 10); // windows
+        // Small building mid-left
+        octx.fillStyle = '#F5F5F5'; octx.fillRect(14, 58, 40, 28);
+        octx.fillStyle = '#1E4D8C'; octx.fillRect(20, 54, 18, 8);
+        // Railing posts along cliff tops
+        octx.fillStyle = '#DDDDDD';
+        for (let rx = 2; rx < 70; rx += 8) { octx.fillRect(rx, 76, 2, 10); }
+        for (let rx = 332; rx < 398; rx += 8) { octx.fillRect(rx, 76, 2, 10); }
+        // Ground — stone tiles
+        octx.fillStyle = '#D4D4D4'; octx.fillRect(0, GROUND_Y, GAME_W, GAME_H - GROUND_Y);
+        octx.fillStyle = '#AAAAAA';
+        for (let gx = 0; gx < GAME_W; gx += 20) { octx.fillRect(gx, GROUND_Y, 1, GAME_H - GROUND_Y); }
+        for (let gy = GROUND_Y; gy < GAME_H; gy += 16) { octx.fillRect(0, gy, GAME_W, 1); }
+        // Horizon line
+        octx.fillStyle = '#FFFFFF'; octx.fillRect(0, 119, GAME_W, 1);
+      }
+    },
+    marALago: {
+      name: 'Mar-a-Lago',
+      bounds: { left: STAGE_LEFT, right: STAGE_RIGHT },
+      groundY: GROUND_Y,
+      bgCanvas: null,
+      draw: function(octx) {
+        // Ceiling — coffered plaster
+        octx.fillStyle = '#E8D4A0'; octx.fillRect(0, 0, GAME_W, 45);
+        octx.fillStyle = '#C4A35A';
+        for (let cx2 = 0; cx2 < GAME_W; cx2 += 50) { octx.fillRect(cx2, 0, 2, 45); }
+        for (let cy2 = 0; cy2 < 45; cy2 += 15) { octx.fillRect(0, cy2, GAME_W, 2); }
+        // Chandelier center
+        octx.fillStyle = '#FFD700'; octx.fillRect(150, 0, 100, 16);
+        octx.fillStyle = '#FFEE88'; octx.fillRect(170, 4, 60, 6);
+        octx.fillStyle = '#FFFFFF';
+        for (let cd = 0; cd < 5; cd++) { octx.fillRect(155 + cd * 18, 12, 4, 4); }
+        // Walls — cream with gold molding
+        octx.fillStyle = '#F5E6C8'; octx.fillRect(0, 45, GAME_W, GROUND_Y - 45);
+        octx.fillStyle = '#C4A35A'; octx.fillRect(0, 60, GAME_W, 3);
+        octx.fillStyle = '#C4A35A'; octx.fillRect(0, 105, GAME_W, 3);
+        octx.fillStyle = '#C4A35A'; octx.fillRect(0, 162, GAME_W, 3);
+        // Columns
+        octx.fillStyle = '#D4C48A';
+        const cols = [30, 148, 252, 358];
+        for (let i = 0; i < cols.length; i++) {
+          octx.fillRect(cols[i], 45, 14, GROUND_Y - 45);
+          octx.fillStyle = '#C4A35A'; octx.fillRect(cols[i], 45, 14, 6); octx.fillRect(cols[i], GROUND_Y - 10, 14, 10);
+          octx.fillStyle = '#D4C48A';
+        }
+        // Arched doorways
+        octx.fillStyle = '#8B6A2E';
+        octx.fillRect(66, 63, 60, 100); // left arch frame
+        octx.fillStyle = '#2A1A08'; octx.fillRect(70, 67, 52, 92); // dark interior
+        octx.fillStyle = '#8B6A2E';
+        octx.fillRect(274, 63, 60, 100); // right arch frame
+        octx.fillStyle = '#2A1A08'; octx.fillRect(278, 67, 52, 92); // dark interior
+        // Palm fronds visible in doorways
+        octx.fillStyle = '#2E6B2E';
+        octx.fillRect(72, 80, 4, 30); octx.fillRect(80, 72, 20, 4); octx.fillRect(92, 78, 16, 4);
+        octx.fillRect(280, 80, 4, 30); octx.fillRect(288, 72, 20, 4); octx.fillRect(300, 78, 16, 4);
+        // Gold wall panels between columns
+        octx.fillStyle = '#E8D4A0';
+        octx.fillRect(44, 65, 22, 90); octx.fillRect(162, 65, 90, 90); octx.fillRect(336, 65, 22, 90);
+        // Marble floor
+        octx.fillStyle = '#F5E6C8'; octx.fillRect(0, GROUND_Y, GAME_W, GAME_H - GROUND_Y);
+        for (let mx = 0; mx < GAME_W; mx += 20) {
+          for (let my = GROUND_Y; my < GAME_H; my += 16) {
+            if (((mx / 20) + (my - GROUND_Y) / 16) % 2 === 0) {
+              octx.fillStyle = '#3B2507'; octx.fillRect(mx, my, 20, 16);
+            }
+          }
+        }
+        octx.fillStyle = '#C4A35A'; octx.fillRect(0, GROUND_Y, GAME_W, 2);
+      }
+    },
+    golfCourse: {
+      name: 'Golf Course',
+      bounds: { left: STAGE_LEFT, right: STAGE_RIGHT },
+      groundY: GROUND_Y,
+      bgCanvas: null,
+      draw: function(octx) {
+        // Sky
+        octx.fillStyle = '#87CEEB'; octx.fillRect(0, 0, GAME_W, 90);
+        // Clouds
+        octx.fillStyle = '#FFFFFF';
+        octx.fillRect(30, 10, 50, 14); octx.fillRect(20, 16, 66, 10);
+        octx.fillRect(200, 20, 40, 12); octx.fillRect(192, 24, 52, 8);
+        octx.fillRect(310, 8, 60, 14); octx.fillRect(302, 13, 72, 10);
+        // Far hills (dark green)
+        octx.fillStyle = '#2E5A2E'; octx.fillRect(0, 80, GAME_W, 50);
+        octx.fillStyle = '#3A6E3A'; octx.fillRect(0, 88, GAME_W, 42);
+        // Clubhouse
+        octx.fillStyle = '#C4A35A'; octx.fillRect(120, 55, 160, 75);
+        octx.fillStyle = '#4D3010'; octx.fillRect(112, 44, 176, 16); // roof
+        octx.fillStyle = '#1A1A4E'; // windows
+        octx.fillRect(136, 72, 20, 22); octx.fillRect(172, 72, 20, 22);
+        octx.fillRect(208, 72, 20, 22); octx.fillRect(244, 72, 20, 22);
+        octx.fillStyle = '#FFFFFF'; // window frames
+        octx.fillRect(135, 71, 22, 24); octx.fillRect(135, 71, 22, 2); octx.fillRect(135, 71, 2, 24); octx.fillRect(155, 71, 2, 24);
+        octx.fillStyle = '#8B6A2E'; octx.fillRect(186, 95, 28, 35); // door
+        // Mid hills
+        octx.fillStyle = '#3E7A3E'; octx.fillRect(0, 110, GAME_W, 50);
+        octx.fillStyle = '#4A8A4A'; octx.fillRect(0, 120, 120, 40); octx.fillRect(300, 118, 100, 42);
+        // Trees at edges
+        octx.fillStyle = '#2E5A2E';
+        octx.fillRect(0, 90, 22, 70); octx.fillRect(378, 90, 22, 70);
+        octx.fillStyle = '#1A3A1A';
+        octx.fillRect(2, 86, 18, 10); octx.fillRect(380, 86, 18, 10);
+        // Fairway — mowed stripes
+        octx.fillStyle = '#4CAF50'; octx.fillRect(0, GROUND_Y - 37, GAME_W, 37);
+        for (let sx = 0; sx < GAME_W; sx += 20) {
+          octx.fillStyle = (Math.floor(sx / 20) % 2 === 0) ? '#3E8E3E' : '#4CAF50';
+          octx.fillRect(sx, GROUND_Y - 37, 20, 37);
+        }
+        // Sand bunker hint
+        octx.fillStyle = '#E8D4A0'; octx.fillRect(0, GROUND_Y - 14, 44, 14);
+        // Ground
+        octx.fillStyle = '#5DBB63'; octx.fillRect(0, GROUND_Y, GAME_W, GAME_H - GROUND_Y);
+        octx.fillStyle = '#4CAF50'; octx.fillRect(0, GROUND_Y + 8, GAME_W, GAME_H - GROUND_Y - 8);
+        // Flag pin
+        octx.fillStyle = '#888888'; octx.fillRect(299, GROUND_Y - 44, 2, 44);
+        octx.fillStyle = '#CC0000'; octx.fillRect(301, GROUND_Y - 44, 14, 10);
+      }
     }
+  };
+
+  // ===== STAGE LOOKUP =====
+  const STAGE_LOOKUP = {
+    'white-house':  STAGES.whiteHouse,
+    'greek-island': STAGES.greekIsland,
+    'mar-a-lago':   STAGES.marALago,
+    'golf-course':  STAGES.golfCourse
   };
 
   // ===== STAGE INIT =====

@@ -87,6 +87,7 @@
   const inputBuffer = [];
   let attackHeldFrames = 0;
   let prevAttack = false;
+  let prevEscape = false;
 
   window.addEventListener('keydown', event => {
     keys[event.key] = true;
@@ -108,7 +109,8 @@
       attack:  !!(keys['j'] || keys['z'] || keys['J'] || keys['Z']),
       block:   !!(keys['k'] || keys['x'] || keys['K'] || keys['X']),
       ultimate:!!(keys['l'] || keys['c'] || keys['L'] || keys['C']),
-      enter:   !!(keys['Enter'])
+      enter:   !!(keys['Enter']),
+      escape:  !!(keys['Escape'])
     };
 
     // Push to circular buffer
@@ -119,6 +121,8 @@
     input.attackPressed  = input.attack && !prevAttack;
     input.attackReleased = !input.attack && prevAttack;
     prevAttack = input.attack;
+    input.escapePressed = input.escape && !prevEscape;
+    prevEscape = input.escape;
 
     // Check if attack was buffered in recent frames (for combo chains)
     input.attackBuffered = inputBuffer.some(f => f.attack);
@@ -305,6 +309,10 @@
   function render() {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, GAME_W, GAME_H);
+    // When paused, draw the fight scene first as background, then the pause overlay
+    if (currentScene === 'pause') {
+      scenes[pauseMenuScene._fromScene] && scenes[pauseMenuScene._fromScene].render(ctx);
+    }
     scenes[currentScene].render(ctx);
   }
 
@@ -3676,6 +3684,12 @@
         return null;
       }
 
+      // Pause menu
+      if (input.escapePressed) {
+        pauseMenuScene.enter('fight');
+        return 'pause';
+      }
+
       // Timer countdown
       roundTimer = Math.max(0, roundTimer - 1);
 
@@ -3901,12 +3915,171 @@
     }
   };
 
+  // ===== PAUSE MENU SCENE =====
+  const pauseMenuScene = {
+    _fromScene: 'fight',
+    _tab: 0,         // 0 = Controls, 1 = Combos
+    _menuItem: 0,    // 0 = Resume, 1 = Char Select
+    _frameCount: 0,
+    _inputCooldown: 0,
+    enter(fromScene) {
+      this._fromScene = fromScene || 'fight';
+      this._tab = 0;
+      this._menuItem = 0;
+      this._frameCount = 0;
+      this._inputCooldown = 8;
+    },
+    update(input) {
+      this._frameCount++;
+      if (this._inputCooldown > 0) { this._inputCooldown--; return null; }
+
+      // ESC resumes
+      if (input.escapePressed) return this._fromScene;
+
+      // Tab switch with left/right
+      if (input.left  && this._tab > 0) { this._tab--; this._inputCooldown = 10; }
+      if (input.right && this._tab < 1) { this._tab++; this._inputCooldown = 10; }
+
+      // Menu item up/down
+      if (input.up   && this._menuItem > 0) { this._menuItem--; this._inputCooldown = 10; }
+      if (input.down && this._menuItem < 1) { this._menuItem++; this._inputCooldown = 10; }
+
+      // Enter confirms selected menu item
+      if (input.enter) {
+        if (this._menuItem === 0) {
+          // Resume
+          return this._fromScene;
+        } else {
+          // Return to char select — reset match state
+          stopBGMusic();
+          p1Wins = 0; p2Wins = 0; currentRound = 1;
+          koTriggered = false; koSplashTimer = 0;
+          roundWinner = null; matchOver = false; winner = null;
+          return 'charSelect';
+        }
+      }
+      return null;
+    },
+    render(ctx) {
+      // Dim the background (fight scene already rendered underneath via current frame)
+      ctx.fillStyle = 'rgba(0,0,0,0.78)';
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
+
+      // Panel
+      const px = 40, py = 18, pw = 320, ph = 200;
+      ctx.fillStyle = '#0D0D2A';
+      ctx.fillRect(px, py, pw, ph);
+      ctx.fillStyle = '#FFCC00';
+      ctx.fillRect(px, py, pw, 2);
+      ctx.fillRect(px, py + ph - 2, pw, 2);
+      ctx.fillRect(px, py, 2, ph);
+      ctx.fillRect(px + pw - 2, py, 2, ph);
+
+      // Title
+      drawText(ctx, 'PAUSED', GAME_W / 2, py + 8, '#FFCC00', 12, 'center');
+
+      // Tab bar
+      const tabs = ['CONTROLS', 'COMBOS'];
+      const tabW = 78;
+      const tabStartX = px + 12;
+      for (let t = 0; t < tabs.length; t++) {
+        const tx = tabStartX + t * (tabW + 6);
+        const ty = py + 26;
+        const active = (t === this._tab);
+        ctx.fillStyle = active ? '#FFCC00' : '#2A2A4A';
+        ctx.fillRect(tx, ty, tabW, 14);
+        drawText(ctx, tabs[t], tx + tabW / 2, ty + 3, active ? '#000000' : '#888888', 7, 'center');
+      }
+
+      const contentY = py + 46;
+
+      if (this._tab === 0) {
+        // === CONTROLS TAB ===
+        const rows = [
+          ['MOVEMENT',    ''],
+          ['Walk L/R',    'A / D  or  ← / →'],
+          ['Jump',        'W  or  ↑'],
+          ['Crouch',      'S  or  ↓'],
+          ['',            ''],
+          ['COMBAT',      ''],
+          ['Fast Attack', 'J  or  Z   (tap)'],
+          ['Power Attack','J  or  Z   (hold 12f+)'],
+          ['Block',       'K  or  X'],
+          ['Ultimate',    'L  or  C   (when meter full)'],
+          ['',            ''],
+          ['MENU',        ''],
+          ['Pause / Resume', 'ESC'],
+          ['Confirm',     'ENTER'],
+        ];
+        let ry = contentY;
+        for (const [label, value] of rows) {
+          if (!label && !value) { ry += 4; continue; }
+          if (!value) {
+            // Section header
+            drawText(ctx, label, px + 14, ry, '#FFCC00', 7, 'left');
+          } else {
+            drawText(ctx, label, px + 18, ry, '#AAAACC', 7, 'left');
+            drawText(ctx, value, px + pw - 14, ry, '#FFFFFF', 7, 'right');
+          }
+          ry += 10;
+        }
+      } else {
+        // === COMBOS TAB ===
+        const combos = [
+          ['Fast Combo',      'J / Z  ×  up to 5 hits'],
+          ['Fast → Power',    'J / Z tap  →  J / Z hold'],
+          ['Power Launch',    'Hold J / Z  (launches foe)'],
+          ['Air Combo',       'Power launch  →  J / Z  in air'],
+          ['Block',           'Hold K / X  (guard meter)'],
+          ['Guard Break',     'Drain guard meter → stun'],
+          ['Ultimate',        'L / C  when yellow bar full'],
+          ['Wall Break',      'Power hit near wall edge'],
+        ];
+        const descs = [
+          'Chain up to 5 fast attacks — release between each tap',
+          'Cancel fast attack recovery into a charged power hit',
+          'Hold J/Z 12+ frames — heavy hit that launches opponent',
+          'After launch, continue with fast attacks while airborne',
+          'Reduces incoming damage — guard meter drains each block',
+          'Stagger opponent when guard bar is fully depleted',
+          'Each fighter\'s signature super move — fills from hits',
+          'Bonus damage + cinematic slow-mo stage transition',
+        ];
+        let ry = contentY;
+        for (let i = 0; i < combos.length; i++) {
+          const [name, input2] = combos[i];
+          drawText(ctx, name, px + 18, ry, '#FFCC00', 7, 'left');
+          drawText(ctx, input2, px + pw - 14, ry, '#FFFFFF', 7, 'right');
+          drawText(ctx, descs[i], px + 18, ry + 9, '#888888', 6, 'left');
+          ry += 20;
+        }
+      }
+
+      // Bottom menu items
+      const menuItems = ['RESUME', 'CHAR SELECT'];
+      const menuY = py + ph - 28;
+      for (let m = 0; m < menuItems.length; m++) {
+        const mx = px + 28 + m * 140;
+        const active = (m === this._menuItem);
+        if (active) {
+          ctx.fillStyle = '#FFCC00';
+          ctx.fillRect(mx - 4, menuY - 2, 72, 14);
+        }
+        drawText(ctx, menuItems[m], mx + 32, menuY, active ? '#000000' : '#666688', 7, 'center');
+      }
+
+      // Hint line
+      drawText(ctx, 'ESC: Resume   ←→: Tabs   ↑↓: Select   ENTER: Confirm', GAME_W / 2, py + ph + 4, '#444466', 6, 'center');
+    }
+  };
+
   const scenes = {
     title: titleScene,
     charSelect: charSelectScene,
     stageSelect: stageSelectScene,
     fight: fightScene,
-    victory: victoryScene
+    victory: victoryScene,
+    pause: pauseMenuScene
   };
 
   // ===== STAGE DEFINITIONS =====

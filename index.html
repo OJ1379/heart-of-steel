@@ -2914,8 +2914,10 @@
 
   function checkWallBreak(attacker, defender) {
     if (stageTier !== 1) return;
+    if (wallBreakActive) return;           // already breaking — don't re-trigger
     if (attacker.currentAttackType !== 'power') return;
     if (attacker.attackPhase !== 'active') return;
+    if (attacker.hitThisAttack) return;    // only on the hit frame
     if (defender.isBlocking) return;
     const nearLeft  = defender.x <= STAGE_LEFT + 8;
     const nearRight = defender.x >= STAGE_RIGHT - 8;
@@ -2923,6 +2925,7 @@
     wallBreakActive = true;
     wallBreakTimer = 30;
     wallBreakSide = nearLeft ? 'left' : 'right';
+    wallBreakVictim = (defender === cpu) ? 'cpu' : 'player'; // track who got hit
     playSFX('wallBreak');
     applyHitStop(15);
   }
@@ -3327,7 +3330,9 @@
   // Wall break state
   let wallBreakActive = false;
   let wallBreakTimer = 0;
-  let wallBreakSide = null;   // 'left' or 'right'
+  let wallBreakSide = null;       // 'left' or 'right'
+  let wallBreakVictim = null;     // 'player' or 'cpu'
+  let wallBreakSlowFrame = 0;     // alternating frame skip for slow-mo
   let stageTier = 1;
 
   // Selection state (set by charSelectScene)
@@ -3367,6 +3372,8 @@
     wallBreakActive = false;
     wallBreakTimer = 0;
     wallBreakSide = null;
+    wallBreakVictim = null;
+    wallBreakSlowFrame = 0;
     stageTier = 1;
     if (currentStage) initStage(STAGE_LOOKUP[selectedStage] || STAGES.whiteHouse);
   }
@@ -3606,9 +3613,20 @@
       wallBreakActive = false;
       wallBreakTimer = 0;
       wallBreakSide = null;
+      wallBreakVictim = null;
+      wallBreakSlowFrame = 0;
       startBGMusic(selectedStage);
     },
     update(input) {
+      // Wall break slow-mo: skip every other game tick for cinematic feel
+      if (wallBreakActive && wallBreakTimer > 0) {
+        wallBreakSlowFrame++;
+        if (wallBreakSlowFrame % 2 === 0) {
+          wallBreakTimer--;
+          return null; // skip this tick
+        }
+      }
+
       // Round splash: block ALL input and game updates
       if (roundSplashTimer > 0) {
         roundSplashTimer--;
@@ -3696,12 +3714,9 @@
           stageTier = 2;
           initStageTier2(STAGE_LOOKUP[selectedStage] || STAGES.whiteHouse);
           playSFX('wallBreak');
-          // Bonus damage to the fighter who was near the wall
-          if (wallBreakSide === 'right') {
-            cpu.health = Math.max(0, cpu.health - 50);
-          } else {
-            player.health = Math.max(0, player.health - 50);
-          }
+          // Bonus 50 damage to the fighter who was knocked into the wall
+          const victim = wallBreakVictim === 'cpu' ? cpu : player;
+          victim.health = Math.max(0, victim.health - 50);
         }
       }
 

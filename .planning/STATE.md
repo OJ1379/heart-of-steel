@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 02-02-PLAN.md (Phase 02 complete)
-last_updated: "2026-03-28T22:44:26.841Z"
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-30T05:41:05.339Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 5
-  completed_plans: 6
+  completed_plans: 7
   percent: 100
 ---
 
@@ -53,6 +53,7 @@ Progress: [██████████] 100% (5 of 5 plans complete)
 - Trend: Data-driven architecture paying off -- AI + round splashes in 15 min, Biden + char select in 7 min
 
 *Updated after each plan completion*
+| Phase 03 P01 | 2 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ Recent decisions affecting current work:
 - [02-02]: AI combo simulation: 2-frame hold + 1-frame release cycle for fast attacks; 14-frame hold for power attacks
 - [02-02]: Round splash is 90 frames (60 ROUND N + 30 FIGHT!) gating all game updates as first check in fightScene.update
 - [02-02]: AI-04 combo behavior implemented; ultimate ability usage deferred to Phase 4 (CMB-08 prerequisite)
+- [Phase 03]: Removed stale CPU badge logic from 5-fighter character select (was hardcoded for 2-fighter layout)
 
 ### Pending Todos
 
@@ -94,6 +96,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-29T00:36:21Z
-Stopped at: Completed 02-02-PLAN.md (Phase 02 complete)
-Resume file: .planning/phases/03-full-roster-stages/03-01-PLAN.md
+Last session: 2026-03-30T05:41:05.335Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None

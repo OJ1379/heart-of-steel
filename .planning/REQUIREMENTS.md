@@ -16,14 +16,14 @@
 
 ### Fighters
 
-- [ ] **FTR-01**: All 5 fighters (Trump, Biden, Obama, Bush, Clinton) are fully playable with distinct stats (speed, power, reach)
+- [x] **FTR-01**: All 5 fighters (Trump, Biden, Obama, Bush, Clinton) are fully playable with distinct stats (speed, power, reach)
 - [ ] **FTR-02**: Each fighter has animated states: idle, walk forward, walk back, jump (rise/fall), crouch, fast attack, power attack, block, hit-stun, knockdown, ultimate, and victory pose
 - [ ] **FTR-03**: Fighter data is fully data-driven — stats, frame data, hitboxes, and draw functions live in a character definition object; adding a fighter requires no engine code changes
 - [ ] **FTR-04**: Trump — brash brawler archetype: wider power swings, slower walk speed, highest power stat; "Art of the Deal" ultimate spawns a golden wall that sweeps the screen multi-hitting the opponent
 - [x] **FTR-05**: Biden — tanky grappler archetype: highest health, longest reach, slow speed; "Ice Cream Avalanche" ultimate summons a wave of ice cream cones that freezes the opponent on hit
-- [ ] **FTR-06**: Obama — balanced technical archetype: highest combo count, smooth attack animations, mid-range stats; "Drone Commander" ultimate shows targeting reticle locking on opponent then rains missiles
-- [ ] **FTR-07**: Bush — unorthodox scrappy archetype: random-feeling timing variations, mid stats; "Now Watch This Drive" ultimate launches a flaming golf ball that ricochets around the stage hitting multiple times
-- [ ] **FTR-08**: Clinton — evasive counter-fighter archetype: fastest walk speed, lowest health, best dodge frames; "Executive Charm" ultimate plays saxophone animation that stuns opponent then delivers a combo finisher
+- [x] **FTR-06**: Obama — balanced technical archetype: highest combo count, smooth attack animations, mid-range stats; "Drone Commander" ultimate shows targeting reticle locking on opponent then rains missiles
+- [x] **FTR-07**: Bush — unorthodox scrappy archetype: random-feeling timing variations, mid stats; "Now Watch This Drive" ultimate launches a flaming golf ball that ricochets around the stage hitting multiple times
+- [x] **FTR-08**: Clinton — evasive counter-fighter archetype: fastest walk speed, lowest health, best dodge frames; "Executive Charm" ultimate plays saxophone animation that stuns opponent then delivers a combo finisher
 
 ### Combat
 
@@ -111,14 +111,14 @@
 | ENG-04 | Phase 1 | Pending |
 | ENG-05 | Phase 1 | Pending |
 | ENG-06 | Phase 1 | Pending |
-| FTR-01 | Phase 3 | Pending |
+| FTR-01 | Phase 3 | Complete |
 | FTR-02 | Phase 1 | Pending |
 | FTR-03 | Phase 1 | Pending |
 | FTR-04 | Phase 1 | Pending |
 | FTR-05 | Phase 2 | Complete |
-| FTR-06 | Phase 3 | Pending |
-| FTR-07 | Phase 3 | Pending |
-| FTR-08 | Phase 3 | Pending |
+| FTR-06 | Phase 3 | Complete |
+| FTR-07 | Phase 3 | Complete |
+| FTR-08 | Phase 3 | Complete |
 | CMB-01 | Phase 1 | Pending |
 | CMB-02 | Phase 1 | Pending |
 | CMB-03 | Phase 1 | Pending |

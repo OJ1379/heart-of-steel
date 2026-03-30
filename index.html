@@ -3701,6 +3701,20 @@
     }
   };
 
+  // ===== STAGE THUMBNAIL GENERATOR =====
+  function generateStageThumbnail(stageDef, width, height) {
+    const oc = document.createElement('canvas');
+    oc.width = width;
+    oc.height = height;
+    const octx = oc.getContext('2d');
+    octx.imageSmoothingEnabled = false;
+    octx.save();
+    octx.scale(width / GAME_W, height / GAME_H);
+    stageDef.draw(octx);
+    octx.restore();
+    return oc;
+  }
+
   // ===== STAGE SELECT SCENE =====
   const stageSelectScene = {
     _cursorPos: 0,
@@ -3718,15 +3732,7 @@
         for (let i = 0; i < this._stageKeys.length; i++) {
           const key = this._stageKeys[i];
           const stageDef = STAGE_LOOKUP[key];
-          const tc = document.createElement('canvas');
-          tc.width = 80; tc.height = 48;
-          const tctx = tc.getContext('2d');
-          tctx.imageSmoothingEnabled = false;
-          tctx.save();
-          tctx.scale(80 / GAME_W, 48 / GAME_H);
-          stageDef.draw(tctx);
-          tctx.restore();
-          this._thumbnails[key] = tc;
+          this._thumbnails[key] = generateStageThumbnail(stageDef, 80, 48);
         }
       }
     },
@@ -3767,10 +3773,21 @@
         }
         drawText(ctx, this._stageNames[i], cx + 40, 118, isSelected ? '#FFCC00' : '#AAAAAA', 7, 'center');
       }
-      drawText(ctx, this._stageNames[this._cursorPos], 200, 145, '#FFFFFF', 10, 'center');
-      drawText(ctx, '< LEFT / RIGHT >', 200, 165, '#666688', 7, 'center');
+      // Large preview of selected stage
+      var previewW = 160, previewH = 96;
+      var previewX = Math.floor((400 - previewW) / 2);
+      var previewY = 130;
+      ctx.fillStyle = '#444466';
+      ctx.fillRect(previewX - 2, previewY - 2, previewW + 4, previewH + 4);
+      var selectedKey = this._stageKeys[this._cursorPos];
+      var largeDef = STAGE_LOOKUP[selectedKey];
+      if (largeDef) {
+        var largeThumb = generateStageThumbnail(largeDef, previewW, previewH);
+        ctx.drawImage(largeThumb, previewX, previewY);
+      }
+      drawText(ctx, this._stageNames[this._cursorPos], 200, previewY - 6, '#FFFFFF', 10, 'center');
       const showPrompt = Math.floor(this._frameCount / 30) % 2 === 0;
-      if (showPrompt) drawText(ctx, 'PRESS ENTER TO CONFIRM', 200, 220, '#FFFFFF', 8, 'center');
+      if (showPrompt) drawText(ctx, 'PRESS ENTER TO FIGHT', 200, 232, '#FFFFFF', 8, 'center');
     }
   };
 

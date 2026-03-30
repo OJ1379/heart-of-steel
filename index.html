@@ -88,6 +88,7 @@
   let attackHeldFrames = 0;
   let prevAttack = false;
   let prevEscape = false;
+  let prevEnter = false;
 
   window.addEventListener('keydown', event => {
     keys[event.key] = true;
@@ -123,6 +124,8 @@
     prevAttack = input.attack;
     input.escapePressed = input.escape && !prevEscape;
     prevEscape = input.escape;
+    input.enterPressed = input.enter && !prevEnter;
+    prevEnter = input.enter;
 
     // Check if attack was buffered in recent frames (for combo chains)
     input.attackBuffered = inputBuffer.some(f => f.attack);
@@ -147,15 +150,25 @@
 
   // ===== AUDIO SYSTEM =====
   let audioCtx = null;
+  let globalGain = null;
+  let musicVolume = 0.8;   // 0.0 to 1.0
   let bgMusicNodes = [];
   let bgMusicPlaying = false;
 
   function initAudio() {
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      globalGain = audioCtx.createGain();
+      globalGain.gain.value = musicVolume;
+      globalGain.connect(audioCtx.destination);
     } catch(e) {
       audioCtx = null;
     }
+  }
+
+  function setMusicVolume(vol) {
+    musicVolume = clamp(vol, 0.0, 1.0);
+    if (globalGain) globalGain.gain.value = musicVolume;
   }
 
   function playSFX(type) {
@@ -163,7 +176,7 @@
     try {
       const now = audioCtx.currentTime;
       const gain = audioCtx.createGain();
-      gain.connect(audioCtx.destination);
+      gain.connect(globalGain || audioCtx.destination);
 
       if (type === 'punch') {
         const osc = audioCtx.createOscillator();
@@ -251,7 +264,7 @@
     const comp = audioCtx.createDynamicsCompressor();
     comp.threshold.value = -20; comp.knee.value = 8;
     comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.18;
-    masterGain.connect(comp); comp.connect(audioCtx.destination);
+    masterGain.connect(comp); comp.connect(globalGain || audioCtx.destination);
 
     // ── Reverb (convolver with exponential-decay IR) ──
     const irLen = Math.floor(audioCtx.sampleRate * 2.0);
@@ -601,7 +614,7 @@
     },
     update(input) {
       this._frameCount++;
-      if (input.enter) return 'charSelect';
+      if (input.enterPressed) return 'charSelect';
       return null;
     },
     render(ctx) {
@@ -3665,7 +3678,7 @@
         }
       }
 
-      if (input.enter) {
+      if (input.enterPressed) {
         selectedP1Def = this._availableFighters[this._cursorPos];
         const remaining = this._availableFighters.filter(function(f) { return f !== selectedP1Def; });
         selectedP2Def = remaining[Math.floor(Math.random() * remaining.length)];
@@ -3799,7 +3812,7 @@
         if (input.left  && this._cursorPos > 0) { this._cursorPos--; this._inputCooldown = 12; }
         if (input.right && this._cursorPos < 3) { this._cursorPos++; this._inputCooldown = 12; }
       }
-      if (input.enter) {
+      if (input.enterPressed) {
         selectedStage = this._stageKeys[this._cursorPos];
         return 'fight';
       }
@@ -3898,7 +3911,7 @@
 
       // Match fully over: wait for Enter to go to victory scene
       if (matchOver) {
-        if (input.enter) return 'victory';
+        if (input.enterPressed) return 'victory';
         return null;
       }
 
@@ -4105,7 +4118,7 @@
     },
     update(input) {
       this._frameCount++;
-      if (input.enter && this._frameCount > 60) {
+      if (input.enterPressed && this._frameCount > 60) {
         // Reset all match state before returning to title
         p1Wins = 0;
         p2Wins = 0;
@@ -4170,7 +4183,7 @@
   // ===== PAUSE MENU SCENE =====
   const pauseMenuScene = {
     _fromScene: 'fight',
-    _tab: 0,         // 0 = Controls, 1 = Combos
+    _tab: 0,         // 0 = Controls, 1 = Combos, 2 = Volume
     _menuItem: 0,    // 0 = Resume, 1 = Char Select
     _frameCount: 0,
     _inputCooldown: 0,
@@ -4190,14 +4203,20 @@
 
       // Tab switch with left/right
       if (input.left  && this._tab > 0) { this._tab--; this._inputCooldown = 10; }
-      if (input.right && this._tab < 1) { this._tab++; this._inputCooldown = 10; }
+      if (input.right && this._tab < 2) { this._tab++; this._inputCooldown = 10; }
 
-      // Menu item up/down
-      if (input.up   && this._menuItem > 0) { this._menuItem--; this._inputCooldown = 10; }
-      if (input.down && this._menuItem < 1) { this._menuItem++; this._inputCooldown = 10; }
+      // Volume tab: up/down adjusts volume instead of menu item
+      if (this._tab === 2) {
+        if (input.up)   { setMusicVolume(musicVolume + 0.1); this._inputCooldown = 8; }
+        if (input.down) { setMusicVolume(musicVolume - 0.1); this._inputCooldown = 8; }
+      } else {
+        // Menu item up/down
+        if (input.up   && this._menuItem > 0) { this._menuItem--; this._inputCooldown = 10; }
+        if (input.down && this._menuItem < 1) { this._menuItem++; this._inputCooldown = 10; }
+      }
 
       // Enter confirms selected menu item
-      if (input.enter) {
+      if (input.enterPressed) {
         if (this._menuItem === 0) {
           // Resume
           return this._fromScene;
@@ -4231,8 +4250,8 @@
       drawText(ctx, 'PAUSED', GAME_W / 2, py + 8, '#FFCC00', 12, 'center');
 
       // Tab bar
-      const tabs = ['CONTROLS', 'COMBOS'];
-      const tabW = 78;
+      const tabs = ['CONTROLS', 'COMBOS', 'VOLUME'];
+      const tabW = 72;
       const tabStartX = px + 12;
       for (let t = 0; t < tabs.length; t++) {
         const tx = tabStartX + t * (tabW + 6);
@@ -4275,7 +4294,7 @@
           }
           ry += 10;
         }
-      } else {
+      } else if (this._tab === 1) {
         // === COMBOS TAB ===
         const combos = [
           ['Fast Combo',      'J / Z  ×  up to 5 hits'],
@@ -4305,6 +4324,44 @@
           drawText(ctx, descs[i], px + 18, ry + 9, '#888888', 6, 'left');
           ry += 20;
         }
+      } else {
+        // === VOLUME TAB ===
+        drawText(ctx, 'MASTER VOLUME', GAME_W / 2, contentY, '#FFFFFF', 10, 'center');
+
+        // Volume bar
+        const barX = px + 40;
+        const barY = contentY + 24;
+        const barW = pw - 80;
+        const barH = 14;
+
+        // Background
+        ctx.fillStyle = '#1A1A3A';
+        ctx.fillRect(barX, barY, barW, barH);
+
+        // Fill
+        const fillW = Math.round(barW * musicVolume);
+        ctx.fillStyle = '#FFCC00';
+        ctx.fillRect(barX, barY, fillW, barH);
+
+        // Border
+        ctx.strokeStyle = '#FFCC00';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX, barY, barW, barH);
+
+        // Percentage text
+        const pct = Math.round(musicVolume * 100);
+        drawText(ctx, pct + '%', GAME_W / 2, barY + 3, pct > 50 ? '#000000' : '#FFFFFF', 8, 'center');
+
+        // Tick marks
+        for (let i = 1; i < 10; i++) {
+          const tickX = barX + Math.round(barW * i / 10);
+          ctx.fillStyle = '#333355';
+          ctx.fillRect(tickX, barY + barH + 2, 1, 3);
+        }
+
+        // Instructions
+        drawText(ctx, 'UP / DOWN to adjust', GAME_W / 2, barY + 28, '#888888', 7, 'center');
+        drawText(ctx, 'W / S  or  Arrow Keys', GAME_W / 2, barY + 40, '#666688', 7, 'center');
       }
 
       // Bottom menu items

@@ -66,8 +66,8 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [x] 03-01-PLAN.md -- Obama, Bush, Clinton fighters with unique sprites, frame data, and stats; data-driven architecture validation
+- [x] 03-02-PLAN.md -- Greek Island, Mar-a-Lago, Golf Course stages; stage select UI with thumbnails and large preview
 
 ### Phase 4: Ultimates, Wall Breaks + Audio
 **Goal**: The game has its signature spectacle features -- unique ultimate abilities for each fighter, destructible wall-break stage transitions, and a full procedural audio suite

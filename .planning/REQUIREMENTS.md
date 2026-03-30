@@ -40,9 +40,9 @@
 ### Stages
 
 - [x] **STG-01**: The White House — Oval Office interior with presidential décor; pixel art background rendered in canvas code *(01-01)*
-- [ ] **STG-02**: Greek Island — Cliffside arena with white-and-blue architecture and sea backdrop
-- [ ] **STG-03**: Mar-a-Lago Club — Lavish ballroom with gilded décor
-- [ ] **STG-04**: Golf Course — Open fairway with clubhouse backdrop
+- [x] **STG-02**: Greek Island — Cliffside arena with white-and-blue architecture and sea backdrop *(03-02)*
+- [x] **STG-03**: Mar-a-Lago Club — Lavish ballroom with gilded décor *(03-02)*
+- [x] **STG-04**: Golf Course — Open fairway with clubhouse backdrop *(03-02)*
 - [ ] **STG-05**: Each stage has two boundary walls; power attacking an opponent into a boundary triggers a wall break: screen goes to slow-mo (0.2x speed) for 30 frames, cinematic zoom punch-in, then transitions to the second tier of the stage with bonus damage applied
 - [ ] **STG-06**: Each stage has a visually distinct second tier (White House → Rose Garden, Greek Island → beach, Mar-a-Lago → patio/pool, Golf Course → sand bunker) rendered as a new background canvas
 
@@ -129,9 +129,9 @@
 | CMB-08 | Phase 4 | Pending |
 | CMB-09 | Phase 1 | Pending |
 | STG-01 | Phase 1 | Pending |
-| STG-02 | Phase 3 | Pending |
-| STG-03 | Phase 3 | Pending |
-| STG-04 | Phase 3 | Pending |
+| STG-02 | Phase 3 | Complete (03-02) |
+| STG-03 | Phase 3 | Complete (03-02) |
+| STG-04 | Phase 3 | Complete (03-02) |
 | STG-05 | Phase 4 | Pending |
 | STG-06 | Phase 4 | Pending |
 | FLW-01 | Phase 1 | Pending |

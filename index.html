@@ -3674,12 +3674,9 @@
         drawText(ctx, card.name.toUpperCase(), nameCenterX, 96, '#FFFFFF', 8, 'center');
       }
 
-      // P1 / CPU badges
+      // P1 badge (CPU is randomly selected at confirm, no fixed card to highlight)
       const p1CardX = cardPositions[this._cursorPos].x + 20;
-      const cpuIdx = (this._cursorPos === 0) ? 1 : 0;
-      const cpuCardX = cardPositions[cpuIdx].x + 20;
       drawText(ctx, 'P1', p1CardX, 36, '#00CC00', 8, 'center');
-      drawText(ctx, 'CPU', cpuCardX, 36, '#CC0000', 8, 'center');
 
       // Difficulty section
       drawText(ctx, 'DIFFICULTY', 200, 128, '#FFFFFF', 8, 'center');

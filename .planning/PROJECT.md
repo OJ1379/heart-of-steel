@@ -32,6 +32,17 @@ A fully playable, fun fighting game that runs from a single HTML file — contro
 - [x] Timer shows 60 when fighting begins (splash correctly freezes countdown)
 - [x] Scene flow Title→CharSelect→StageSelect→Fight→Victory→Title wired end-to-end
 
+**Full Roster + Stages** — Validated in Phase 03: full-roster-stages
+- [x] Barack Obama fighter — balanced technical, orange/black palette, health: 1000, walkSpeed: 3.2, maxChain: 5
+- [x] George W. Bush fighter — unorthodox scrappy, khaki/beige palette, health: 1050, power: 1.2, wide hitboxes
+- [x] Bill Clinton — evasive counter-fighter, navy/blue palette, health: 950, walkSpeed: 3.8 (fastest)
+- [x] All 5 fighters on character select with distinct pixel art portraits; CPU picks randomly from remaining 4
+- [x] Greek Island stage — cliffside arena with sea backdrop
+- [x] Mar-a-Lago Club stage — gilded ballroom with gold trim and marble floor
+- [x] Golf Course stage — open fairway with sky and grass
+- [x] Stage select screen with 4 thumbnail previews and large 160x96 preview panel
+- [x] Selected stage loads correctly in fight scene via STAGE_LOOKUP map
+
 ### Active
 
 **Engine & Rendering**

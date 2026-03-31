@@ -79,12 +79,12 @@ Plans:
   3. Guard meter depletes when blocking and causes a guard break stun when fully drained; juggle combos allow 2-4 air hits with visible gravity scaling and diminishing damage
   4. Punch impacts, power hits, blocks, guard breaks, wall breaks, KOs, and ultimate activations all have distinct procedural sound effects; each stage has looping chiptune background music
   5. Audio degrades gracefully if Web Audio API is blocked, and SFX are clearly audible over background music
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
-- [ ] 04-03: TBD
+- [ ] 04-01-PLAN.md -- Combat mechanics: juggle expansion (fast-attack air follow-ups, combo ender launch), guard meter verification, AI ultimate usage with difficulty scaling
+- [ ] 04-02-PLAN.md -- Visual spectacle: cinematic zoom on wall breaks, slow-mo tuning, character-specific ultimate animations for all 5 fighters
+- [ ] 04-03-PLAN.md -- Audio polish: separate SFX/BGM volume routing, SFX tonal refinement, pause menu volume controls, graceful degradation
 
 ## Progress
 

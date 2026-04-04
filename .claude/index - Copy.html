@@ -262,6 +262,7 @@
   let prevAttack = false;
   let prevEscape = false;
   let prevEnter = false;
+  const GAMEPAD_DEADZONE = 0.45;
 
   window.addEventListener('keydown', event => {
     keys[event.key] = true;
@@ -274,17 +275,57 @@
     keys[event.key] = false;
   });
 
+  function isGamepadButtonPressed(gamepad, index) {
+    if (!gamepad || !gamepad.buttons || !gamepad.buttons[index]) return false;
+    const button = gamepad.buttons[index];
+    return !!(button.pressed || button.value > 0.5);
+  }
+
+  function readGamepadInput() {
+    const state = {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      attack: false,
+      block: false,
+      ultimate: false,
+      enter: false,
+      escape: false
+    };
+    if (!navigator.getGamepads) return state;
+
+    const pads = navigator.getGamepads();
+    for (let i = 0; i < pads.length; i++) {
+      const pad = pads[i];
+      if (!pad) continue;
+      const axisX = pad.axes && pad.axes.length > 0 ? pad.axes[0] : 0;
+      const axisY = pad.axes && pad.axes.length > 1 ? pad.axes[1] : 0;
+      state.left = state.left || axisX <= -GAMEPAD_DEADZONE || isGamepadButtonPressed(pad, 14);
+      state.right = state.right || axisX >= GAMEPAD_DEADZONE || isGamepadButtonPressed(pad, 15);
+      state.up = state.up || axisY <= -GAMEPAD_DEADZONE || isGamepadButtonPressed(pad, 12);
+      state.down = state.down || axisY >= GAMEPAD_DEADZONE || isGamepadButtonPressed(pad, 13);
+      state.attack = state.attack || isGamepadButtonPressed(pad, 0);
+      state.block = state.block || isGamepadButtonPressed(pad, 2);
+      state.ultimate = state.ultimate || isGamepadButtonPressed(pad, 3);
+      state.enter = state.enter || isGamepadButtonPressed(pad, 9) || isGamepadButtonPressed(pad, 0);
+      state.escape = state.escape || isGamepadButtonPressed(pad, 8) || isGamepadButtonPressed(pad, 1);
+    }
+    return state;
+  }
+
   function readInput() {
+    const gamepad = readGamepadInput();
     const input = {
-      left:    !!(keys['a'] || keys['ArrowLeft']),
-      right:   !!(keys['d'] || keys['ArrowRight']),
-      up:      !!(keys['w'] || keys['ArrowUp']),
-      down:    !!(keys['s'] || keys['ArrowDown']),
-      attack:  !!(keys['j'] || keys['z'] || keys['J'] || keys['Z']),
-      block:   !!(keys['k'] || keys['x'] || keys['K'] || keys['X']),
-      ultimate:!!(keys['l'] || keys['c'] || keys['L'] || keys['C']),
-      enter:   !!(keys['Enter']),
-      escape:  !!(keys['Escape'])
+      left:    !!(keys['a'] || keys['ArrowLeft'] || gamepad.left),
+      right:   !!(keys['d'] || keys['ArrowRight'] || gamepad.right),
+      up:      !!(keys['w'] || keys['ArrowUp'] || gamepad.up),
+      down:    !!(keys['s'] || keys['ArrowDown'] || gamepad.down),
+      attack:  !!(keys['j'] || keys['z'] || keys['J'] || keys['Z'] || gamepad.attack),
+      block:   !!(keys['k'] || keys['x'] || keys['K'] || keys['X'] || gamepad.block),
+      ultimate:!!(keys['l'] || keys['c'] || keys['L'] || keys['C'] || gamepad.ultimate),
+      enter:   !!(keys['Enter'] || gamepad.enter),
+      escape:  !!(keys['Escape'] || gamepad.escape)
     };
 
     // Push to circular buffer
@@ -6920,8 +6961,9 @@
 
   const AI_DIFFICULTIES = [
     { name: 'EASY',   reactionFrames: 15, blockChance: 0.20, comboChance: 0.10, approachDist: 70, pressureDist: 50, retreatHealth: 0.2, jumpChance: 0.005, powerAttackChance: 0.05, ultimateChance: 0.02 },
-    { name: 'MEDIUM', reactionFrames: 9,  blockChance: 0.50, comboChance: 0.30, approachDist: 65, pressureDist: 45, retreatHealth: 0.3, jumpChance: 0.008, powerAttackChance: 0.10, ultimateChance: 0.05 },
-    { name: 'HARD',   reactionFrames: 4,  blockChance: 0.80, comboChance: 0.60, approachDist: 55, pressureDist: 40, retreatHealth: 0.4, jumpChance: 0.012, powerAttackChance: 0.15, ultimateChance: 0.12 }
+    { name: 'NORMAL', reactionFrames: 9,  blockChance: 0.50, comboChance: 0.30, approachDist: 65, pressureDist: 45, retreatHealth: 0.3, jumpChance: 0.008, powerAttackChance: 0.10, ultimateChance: 0.05 },
+    { name: 'HARD',   reactionFrames: 4,  blockChance: 0.80, comboChance: 0.60, approachDist: 55, pressureDist: 40, retreatHealth: 0.4, jumpChance: 0.012, powerAttackChance: 0.15, ultimateChance: 0.12 },
+    { name: 'EXPERT', reactionFrames: 2,  blockChance: 0.94, comboChance: 0.82, approachDist: 50, pressureDist: 36, retreatHealth: 0.5, jumpChance: 0.015, powerAttackChance: 0.22, ultimateChance: 0.18 }
   ];
 
   function createAIController(difficulty) {
@@ -7474,7 +7516,7 @@
   // Selection state (set by charSelectScene)
   let selectedP1Def = null;
   let selectedP2Def = null;
-  let selectedDifficulty = 1;  // 0=Easy, 1=Medium, 2=Hard
+  let selectedDifficulty = 1;  // 0=Easy, 1=Normal, 2=Hard, 3=Expert
   let selectedStage = 'white-house';
   let pendingGameMode = 'exhibition';
   let selectedGameMode = 'exhibition';
@@ -7800,14 +7842,15 @@
   }
 
   const CHAR_SELECT_CARDS = [
-    { def: TRUMP,   titleLines: ['THE DEALMAKER'],        accent: '#F7B733', shadow: '#7A3F10' },
-    { def: BUSH,    titleLines: ['THE COWBOY'],           accent: '#D2A065', shadow: '#6F4922' },
-    { def: OBAMA,   titleLines: ['THE PEOPLE', 'PLEASER'], accent: '#6CB7FF', shadow: '#173C72' },
-    { def: CLINTON, titleLines: ['BUBBA'],                accent: '#D9E1F4', shadow: '#5E6C8E' },
-    { def: BIDEN,   titleLines: ['ICE CREAM', 'COMMANDER'], accent: '#FFF1A8', shadow: '#80734D' }
+    { def: TRUMP,   displayName: 'DONALD TRUMP',   titleLines: ['THE DEALMAKER'],         accent: '#F7B733', shadow: '#7A3F10' },
+    { def: BIDEN,   displayName: 'JOE BIDEN',      titleLines: ['ICE CREAM', 'COMMANDER'], accent: '#FFF1A8', shadow: '#80734D' },
+    { def: OBAMA,   displayName: 'BARACK OBAMA',   titleLines: ['THE PEOPLE', 'PLEASER'],  accent: '#6CB7FF', shadow: '#173C72' },
+    { def: BUSH,    displayName: 'GEORGE W. BUSH', titleLines: ['THE COWBOY'],            accent: '#D2A065', shadow: '#6F4922' },
+    { def: CLINTON, displayName: 'BILL CLINTON',   titleLines: ['BUBBA'],                 accent: '#D9E1F4', shadow: '#5E6C8E' }
   ];
 
   function drawCharacterSelectHeader(ctx, frame) {
+    const centerX = GAME_W / 2;
     const sweepX = Math.floor(((frame * 3) % (GAME_W + 72)) - 72);
     ctx.fillStyle = '#03050B';
     ctx.fillRect(0, 0, GAME_W, 26);
@@ -7819,8 +7862,8 @@
     }
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     ctx.fillRect(sweepX, 0, 30, 26);
-    drawText(ctx, 'CHOOSE YOUR FIGHTER', 201, 6, '#8E4513', 14, 'center');
-    drawText(ctx, 'CHOOSE YOUR FIGHTER', 200, 4, '#FFD13C', 14, 'center');
+    drawText(ctx, 'CHOOSE YOUR FIGHTER', centerX, 6, '#8E4513', 14, 'center');
+    drawText(ctx, 'CHOOSE YOUR FIGHTER', centerX, 4, '#FFD13C', 14, 'center');
     ctx.fillStyle = '#C7CCD5';
     ctx.fillRect(8, 25, GAME_W - 16, 1);
     ctx.fillStyle = '#757B86';
@@ -7921,7 +7964,7 @@
     ctx.stroke();
   }
 
-  function renderCharacterSelectBackdrop(ctx, frame) {
+  function renderCharacterSelectBackdropBase(ctx, frame) {
     ctx.fillStyle = '#02040B';
     ctx.fillRect(0, 0, GAME_W, GAME_H);
 
@@ -7965,6 +8008,34 @@
     ctx.fillRect(0, 206, GAME_W, 2);
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     for (let y = 0; y < GAME_H; y += 6) ctx.fillRect(0, y, GAME_W, 1);
+  }
+
+  const characterSelectBackdropScale = Math.max(2, Math.ceil(window.devicePixelRatio || 1));
+  const characterSelectBackdropCanvas = document.createElement('canvas');
+  characterSelectBackdropCanvas.width = GAME_W * characterSelectBackdropScale;
+  characterSelectBackdropCanvas.height = GAME_H * characterSelectBackdropScale;
+  const characterSelectBackdropCtx = characterSelectBackdropCanvas.getContext('2d');
+
+  function renderCharacterSelectBackdrop(ctx, frame) {
+    characterSelectBackdropCtx.setTransform(1, 0, 0, 1, 0, 0);
+    characterSelectBackdropCtx.clearRect(0, 0, characterSelectBackdropCanvas.width, characterSelectBackdropCanvas.height);
+    characterSelectBackdropCtx.setTransform(characterSelectBackdropScale, 0, 0, characterSelectBackdropScale, 0, 0);
+    characterSelectBackdropCtx.imageSmoothingEnabled = true;
+    renderCharacterSelectBackdropBase(characterSelectBackdropCtx, frame);
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(
+      characterSelectBackdropCanvas,
+      0,
+      0,
+      characterSelectBackdropCanvas.width,
+      characterSelectBackdropCanvas.height,
+      0,
+      0,
+      GAME_W,
+      GAME_H
+    );
+    ctx.restore();
   }
 
   function drawCharacterSelectSlot(ctx, card, x, y, w, h, selected, frame) {
@@ -8054,6 +8125,18 @@
     drawText(ctx, card.titleLines.join(' '), x + Math.floor(w / 2), y + 5, '#111111', 6, 'center');
   }
 
+  function drawCharacterSelectNameBanner(ctx, card) {
+    const centerX = GAME_W / 2;
+    const w = 228;
+    const h = 22;
+    const x = Math.floor(centerX - w / 2);
+    const y = 106;
+    drawSelectPanel(ctx, x, y, w, h, card.accent);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(x + 6, y + 6, w - 12, 3);
+    drawText(ctx, card.displayName, centerX, y + 4, '#FFF6D6', 14, 'center');
+  }
+
   // ===== CHARACTER SELECT SCENE =====
   const charSelectScene = {
     _cursorPos: 0,
@@ -8088,12 +8171,12 @@
           this._inputCooldown = 12;
           playSFX('menuMove');
         }
-        if (input.up && this._difficulty > 0) {
-          this._difficulty--;
+        if (input.up && this._difficulty < AI_DIFFICULTIES.length - 1) {
+          this._difficulty++;
           this._inputCooldown = 12;
           playSFX('menuMove');
-        } else if (input.down && this._difficulty < 2) {
-          this._difficulty++;
+        } else if (input.down && this._difficulty > 0) {
+          this._difficulty--;
           this._inputCooldown = 12;
           playSFX('menuMove');
         }
@@ -8122,8 +8205,9 @@
       return null;
     },
     render(ctx) {
+      const centerX = GAME_W / 2;
       const selectedCard = CHAR_SELECT_CARDS[this._cursorPos];
-      const difficultyLabel = this._difficulty === 0 ? 'EASY' : this._difficulty === 1 ? 'MEDIUM' : 'HARD';
+      const difficultyLabel = AI_DIFFICULTIES[this._difficulty].name;
 
       renderCharacterSelectBackdrop(ctx, this._frameCount);
       drawCharacterSelectHeader(ctx, this._frameCount);
@@ -8132,6 +8216,7 @@
         drawCharacterSelectSlot(ctx, CHAR_SELECT_CARDS[i], 12 + i * 76, 36, 72, 58, i === this._cursorPos, this._frameCount);
       }
 
+      drawCharacterSelectNameBanner(ctx, selectedCard);
       drawCharacterSelectPreviewPanel(ctx, selectedCard, this._difficulty, this._frameCount);
       drawCharacterSelectInfoChip(ctx, 152, 172, 96, 34, 'DIFFICULTY', [difficultyLabel], '#4B84E0');
 
@@ -8141,13 +8226,13 @@
       ctx.fillRect(124, 200, 152, 16);
       ctx.fillStyle = '#FFCC29';
       ctx.fillRect(128, 203, 144, 10);
-      drawText(ctx, 'PLAYER SELECT', 200, 204, '#111111', 10, 'center');
+      drawText(ctx, 'PLAYER SELECT', centerX, 204, '#111111', 10, 'center');
 
       const showPrompt = Math.floor(this._frameCount / 24) % 2 === 0;
       if (showPrompt) {
-        drawText(ctx, 'PRESS ENTER TO FIGHT', 200, 228, '#FFF4C3', 6, 'center');
+        drawText(ctx, 'PRESS ENTER TO FIGHT', centerX, 226, '#FFF4C3', 6, 'center');
       }
-      drawText(ctx, 'A/D OR ARROWS CHANGE FIGHTER   W/S CHANGE DIFFICULTY   ESC BACK', 200, 237, '#C8CFDA', 5, 'center');
+      drawText(ctx, 'LEFT/RIGHT OR DPAD FIGHTER   UP/DOWN DIFFICULTY   ESC/BACK', centerX, 234, '#C8CFDA', 5, 'center');
     }
   };
 

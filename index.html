@@ -9322,9 +9322,9 @@
       ctx.drawImage(portraitCache[cpu.def.name], frameX + 2, 2, portraitW, portraitH);
     }
 
-    drawText(ctx, 'P1', 38, 2, '#FFF4C9', 6, 'left');
+    drawText(ctx, 'P1', 38, 0, '#FFF4C9', 6, 'left');
     // P1 Name
-    drawText(ctx, player.def.name.toUpperCase(), 30, 8, '#FFFFFF', 8, 'left');
+    drawText(ctx, player.def.name.toUpperCase(), 30, 4, '#FFFFFF', 8, 'left');
 
     // P1 Health bar
     drawHealthBar(ctx, 48, 8, 128, 8, player.health, getFighterMaxHealth(player), true);

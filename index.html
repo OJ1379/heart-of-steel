@@ -9631,15 +9631,13 @@
         const breathe = f >= 34 && f < 80 ? Math.round(Math.sin(f * 0.2) * 2) : 0;
 
         if (f < 34) {
-          const leapX = cutCenterX - 80 + fighter.facing * (leap * 44);
-          const leapY = fighter.y - 56 - jumpArc + drop * 20;
+          const leapX = cutCenterX - 12 + fighter.facing * (leap * 30);
+          const leapY = fighter.y - 48 - jumpArc + drop * 18;
           ctx.save();
           ctx.translate(Math.floor(leapX), Math.floor(leapY));
-          if (fighter.facing === -1) {
-            ctx.translate(160, 0);
-            ctx.scale(-1, 1);
-          }
-          ctx.scale(2.5, 2.5);
+          if (fighter.facing === -1) ctx.scale(-1, 1);
+          ctx.scale(2.15, 2.15);
+          ctx.translate(-32, -28);
           drawBidenBase(ctx, 0, 0, 1, leap < 0.55 ? 3 : 4);
           ctx.restore();
           if (f >= 12 && f <= 18) {
